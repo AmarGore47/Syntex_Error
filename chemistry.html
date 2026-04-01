@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Chemistry Lab - Hand Tracking Immersive</title>
+    
+    <!-- MediaPipe Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --panel-bg: #1e293b;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --accent-red: #ef4444;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --glow-color: rgba(59, 130, 246, 0.5);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        #top-bar {
+            height: 60px;
+            background-color: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        .brand { font-size: 1.2rem; font-weight: bold; color: var(--accent-blue); display: flex; align-items: center; gap: 10px; }
+        .brand span { color: var(--text-light); }
+
+        .controls { display: flex; gap: 15px; align-items: center; }
+        
+        select, button {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+        
+        select:hover, button:hover { border-color: var(--accent-blue); }
+        button:active { transform: scale(0.98); }
+        
+        .btn-primary { background-color: var(--accent-blue); border-color: var(--accent-blue); font-weight: bold; }
+        .btn-primary:hover { background-color: #2563eb; }
+        
+        .btn-warning { background-color: var(--accent-red); border-color: var(--accent-red); }
+
+        .btn-outline {
+            background-color: transparent;
+            color: var(--accent-blue);
+            border: 1px solid var(--accent-blue);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+            width: 100%;
+            font-weight: bold;
+        }
+        .btn-outline:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Main Layout */
+        #main-content {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 60px); /* Purna screen height gheil aata */
+            overflow: hidden;
+        }
+
+        /* Left Panel (AR View) */
+        #left-panel {
+            flex: 1; /* Sagli urleli jagah AR camera gheil */
+            position: relative;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #webcam { display: none; } /* Hidden, drawn to canvas */
+        #ar-canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Video la fugu det nahi, pan motha karto */
+        }
+
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            transition: opacity 0.5s;
+        }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Right Panel (Interface) - Aata ha ek Sidebar sarka kam karel */
+        #right-panel {
+            width: 380px; /* Fixed width sidebar sathi */
+            flex-shrink: 0;
+            background-color: var(--panel-bg);
+            border-left: 1px solid var(--border-color);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        .card {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .card h3 { color: var(--accent-green); margin-bottom: 10px; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+
+        .step-list { list-style: none; }
+        .step-list li {
+            padding: 8px 0;
+            border-bottom: 1px dashed var(--border-color);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: color 0.3s;
+        }
+        .step-list li.active { color: var(--text-light); font-weight: bold; }
+        .step-list li.completed { color: var(--accent-green); text-decoration: line-through; }
+        .step-list li.completed::before { content: '✓'; color: var(--accent-green); }
+
+        /* Navin CSS Overview aani Current Step sathi */
+        .overview-text {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 15px;
+            line-height: 1.4;
+            font-style: italic;
+            border-left: 3px solid var(--accent-purple);
+            padding-left: 10px;
+        }
+
+        .current-step-box {
+            background-color: rgba(59, 130, 246, 0.1);
+            border: 2px solid var(--accent-blue);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--text-light);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .current-step-box span { color: var(--accent-blue); font-size: 1.5rem; }
+
+        .gesture-guide { display: grid; grid-template-columns: auto 1fr; gap: 10px; margin-top: 10px; font-size: 0.9rem; }
+        .gesture-icon { background: var(--border-color); padding: 4px 8px; border-radius: 4px; font-weight: bold; text-align: center; }
+
+        /* Console & Sensors - shifted to sidebar */
+        .console-box {
+            background-color: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            height: 120px;
+            overflow-y: auto;
+            color: var(--accent-green);
+        }
+
+        .sensor-data {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sensor-card {
+            background-color: #0f172a; /* Darker bg for contrast */
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sensor-value { font-size: 1.2rem; font-weight: bold; color: var(--accent-blue); }
+
+        /* UI Overlays inside Canvas Container */
+        .safety-alert {
+            position: absolute;
+            top: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            display: none;
+            z-index: 30;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Navin AR Instruction Pop-up Overlay CSS */
+        .ar-overlay {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.85);
+            border: 2px solid var(--accent-blue);
+            color: var(--text-light);
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 25;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+            pointer-events: auto; /* Changed to auto so button works */
+            max-width: 80%;
+            transition: all 0.3s ease;
+        }
+
+        .close-popup-btn {
+            position: absolute;
+            top: 2px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .close-popup-btn:hover {
+            color: var(--accent-red);
+        }
+        
+        .ar-overlay span.badge {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--accent-green);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            #main-content { flex-direction: column; height: auto; }
+            #left-panel { height: 50vh; border-right: none; border-bottom: 1px solid var(--border-color); }
+            #right-panel { height: auto; }
+            #bottom-panel { height: auto; flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <div class="brand">
+            🧬 <span>AR ChemLab</span>
+        </div>
+        <div class="controls">
+            <select id="experiment-selector">
+                <option value="titration">Exp 1: Acid-Base Titration</option>
+                <option value="testtube">Exp 2: Test Tube Reaction</option>
+                <option value="flame">Exp 3: Flame Test</option>
+            </select>
+            <button id="btn-goggles" class="btn-warning">🥽 Wear Goggles</button>
+            <button id="btn-reset" class="btn-primary">↻ Reset</button>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div id="left-panel">
+            <div class="loading-overlay" id="loading">
+                <div class="spinner"></div>
+                <h2 id="loading-text">Initializing Camera & AI Models...</h2>
+            </div>
+            <div class="safety-alert" id="safety-alert">⚠️ SAFETY WARNING: Put on your goggles first!</div>
+            
+            <!-- Navin AR Instruction Pop-up -->
+            <div id="ar-instruction-overlay" class="ar-overlay">
+                <button id="close-ar-popup" class="close-popup-btn" title="Close instruction">&times;</button>
+                <span class="badge">Current Task</span>
+                <div id="ar-instruction-text">Waiting to start...</div>
+            </div>
+
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="ar-canvas"></canvas>
+        </div>
+
+        <div id="right-panel">
+            <!-- Sensors Section (Moved from bottom) -->
+            <div class="card">
+                <h3>Live Sensors</h3>
+                <div class="sensor-data">
+                    <div class="sensor-card">
+                        <span>Temperature</span>
+                        <span class="sensor-value" id="ui-temp">22.0°C</span>
+                    </div>
+                    <div class="sensor-card">
+                        <span>pH Level</span>
+                        <span class="sensor-value" id="ui-ph">7.00</span>
+                    </div>
+                    <div class="sensor-card">
+                        <span>Volume</span>
+                        <span class="sensor-value" id="ui-vol">0.0 mL</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Current Step</h3>
+                <div id="current-step-box" class="current-step-box" style="margin-bottom: 5px;">
+                    <span>👉</span> <div id="current-step-text">Waiting...</div>
+                </div>
+                <button id="btn-show-task" class="btn-outline">👀 Show AR Pop-up</button>
+            </div>
+
+            <div class="card">
+                <h3>Completed Steps</h3>
+                <ul class="step-list" id="procedure-list">
+                    <!-- Populated via JS -->
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h3>Reaction Logs</h3>
+                <div class="console-box" id="reaction-console">
+                    > System initialized. Waiting for user interaction...<br>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Gesture Guide</h3>
+                <div class="gesture-guide" id="gesture-guide">
+                    <!-- Populated via JS -->
+                </div>
+                <div style="margin-top:10px; font-weight:bold; color:var(--accent-blue);" id="detected-gesture">Hand: None</div>
+            </div>
+            
+            <!-- Hidden Overview to save space, keeping logic intact -->
+            <p id="exp-overview" class="overview-text" style="display: none;">Loading experiment...</p>
+        </div>
+    </div>
+
+<script>
+/**
+ * AR Chemistry Lab Application Logic
+ * Implements Hand Tracking, Rendering, Physics/Chemistry Simulation
+ */
+
+// --- Global State & Configuration ---
+const STATE = {
+    isLoaded: false,
+    gogglesOn: false,
+    currentExperiment: 'titration',
+    handPresent: false,
+    currentGesture: 'None',
+    cursorX: 0,
+    cursorY: 0,
+    logs: [],
+    canvasWidth: 640,
+    canvasHeight: 480
+};
+
+// --- DOM Elements ---
+const videoEl = document.getElementById('webcam');
+const canvasEl = document.getElementById('ar-canvas');
+const ctx = canvasEl.getContext('2d');
+const loadingEl = document.getElementById('loading');
+const consoleEl = document.getElementById('reaction-console');
+const procedureList = document.getElementById('procedure-list');
+const expSelector = document.getElementById('experiment-selector');
+const btnGoggles = document.getElementById('btn-goggles');
+const btnReset = document.getElementById('btn-reset');
+const uiTemp = document.getElementById('ui-temp');
+const uiPh = document.getElementById('ui-ph');
+const uiVol = document.getElementById('ui-vol');
+
+// --- Audio Engine (Web Audio API) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const Sound = {
+    playTone: (freq, type, duration, vol=0.1) => {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    },
+    success: () => { Sound.playTone(523.25, 'sine', 0.1); setTimeout(()=>Sound.playTone(659.25, 'sine', 0.2), 100); },
+    error: () => { Sound.playTone(150, 'sawtooth', 0.3, 0.2); },
+    drip: () => { Sound.playTone(800 + Math.random()*200, 'sine', 0.05, 0.05); },
+    hiss: () => { Sound.playTone(4000, 'noise', 0.1, 0.02); } // Fake noise
+};
+
+function logMsg(msg, color="#10b981") {
+    const time = new Date().toLocaleTimeString();
+    const span = document.createElement('span');
+    span.style.color = color;
+    span.innerHTML = `[${time}] ${msg}<br>`;
+    consoleEl.appendChild(span);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+
+// --- Gesture Recognition Engine ---
+function calculateDistance(p1, p2) {
+    return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+}
+
+function detectGesture(landmarks) {
+    if (!landmarks) return 'None';
+
+    const thumbTip = landmarks[4];
+    const indexTip = landmarks[8];
+    const middleTip = landmarks[12];
+    const ringTip = landmarks[16];
+    const pinkyTip = landmarks[20];
+    const wrist = landmarks[0];
+
+    // Distance threshold relative to hand size
+    const handSize = calculateDistance(wrist, middleTip);
+    const pinchDist = calculateDistance(thumbTip, indexTip) / handSize;
+
+    // Fingers extended check (y-coordinate relative to wrist, assuming upright hand)
+    // A better way is checking distance from wrist to tip vs wrist to mcp (base)
+    const isExtended = (tip, base) => calculateDistance(wrist, tip) > calculateDistance(wrist, base) * 1.2;
+    
+    const indexExt = isExtended(landmarks[8], landmarks[5]);
+    const middleExt = isExtended(landmarks[12], landmarks[9]);
+    const ringExt = isExtended(landmarks[16], landmarks[13]);
+    const pinkyExt = isExtended(landmarks[20], landmarks[17]);
+
+    if (pinchDist < 0.15) return 'Pinch';
+    if (!indexExt && !middleExt && !ringExt && !pinkyExt) return 'Fist';
+    if (indexExt && !middleExt && !ringExt && !pinkyExt) return 'Pointing';
+    if (indexExt && middleExt && !ringExt && !pinkyExt) return 'Peace';
+    if (indexExt && middleExt && ringExt && pinkyExt) return 'OpenPalm';
+    
+    // Check horizontal hand wave (simple mock)
+    return 'Hover'; 
+}
+
+// --- Particles System ---
+class ParticleSystem {
+    constructor() { this.particles = []; }
+    add(x, y, color, vx, vy, life) {
+        this.particles.push({x, y, color, vx, vy, life, maxLife: life});
+    }
+    updateAndDraw(ctx) {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            let p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life--;
+            ctx.globalAlpha = p.life / p.maxLife;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 2 + (p.maxLife - p.life)/10, 0, Math.PI*2);
+            ctx.fill();
+            if (p.life <= 0) this.particles.splice(i, 1);
+        }
+        ctx.globalAlpha = 1.0;
+    }
+}
+const pSystem = new ParticleSystem();
+
+// --- Experiments Definitions & Logic ---
+
+const Experiments = {
+    titration: {
+        id: 'titration',
+        name: 'Acid-Base Titration',
+        overview: 'In this experiment, we will add NaOH from the burette to the flask to change the pH of the solution. Observe the color change.',
+        steps: [
+            { id: 1, desc: 'Pinch the burette valve to dispense NaOH.', done: false },
+            { id: 2, desc: 'Hover and move hand horizontally to swirl the flask.', done: false },
+            { id: 3, desc: 'Place an Open Palm over the flask to check the pH.', done: false }
+        ],
+        gestures: [
+            { icon: '🤏', desc: 'Pinch: Dispense chemical' },
+            { icon: '🖐️', desc: 'Open Palm: Check pH' },
+            { icon: '👋', desc: 'Hand Wave: Swirl solution' }
+        ],
+        state: {
+            buretteVol: 50,
+            flaskVol: 50,
+            ph: 2.0,
+            color: [255, 255, 255, 0.1], // RGBA, starts clear
+            valveOpen: false,
+            titrantAdded: 0,
+            swirlFactor: 0
+        },
+        init: function() {
+            this.state = { buretteVol: 50, flaskVol: 50, ph: 2.0, color: [255, 255, 255, 0.1], valveOpen: false, titrantAdded: 0, swirlFactor: 0 };
+            uiPh.innerText = '2.00'; uiVol.innerText = '0.0 mL'; uiTemp.innerText = '22.0°C';
+        },
+        update: function(gesture, cx, cy) {
+            const s = this.state;
+            const w = STATE.canvasWidth, h = STATE.canvasHeight;
+            
+            // Zones
+            const inValve = cx > w*0.35 && cx < w*0.45 && cy > h*0.3 && cy < h*0.5;
+            const inFlask = cx > w*0.35 && cx < w*0.65 && cy > h*0.6 && cy < h*0.9;
+
+            // Step 1: Dispense
+            if (inValve && gesture === 'Pinch') {
+                if(!STATE.gogglesOn) { showSafetyAlert(); return; }
+                s.valveOpen = true;
+                if (s.buretteVol > 0) {
+                    s.buretteVol -= 0.1;
+                    s.titrantAdded += 0.1;
+                    s.flaskVol += 0.1;
+                    if(Math.random() > 0.5) Sound.drip();
+                    
+                    // Add dripping particles
+                    pSystem.add(w*0.5, h*0.5, 'rgba(200,200,200,0.8)', 0, 5, 20);
+                    
+                    // Localized color change (pink) before swirling
+                    s.color = [255, 105, 180, Math.min(0.8, s.titrantAdded * 0.05)];
+                    
+                    if(!this.steps[0].done && s.titrantAdded > 5) {
+                        this.steps[0].done = true;
+                        updateStepsUI();
+                        logMsg("NaOH added. Observe the color change.");
+                        Sound.success();
+                    }
+                    uiVol.innerText = s.titrantAdded.toFixed(1) + ' mL';
+                }
+            } else {
+                s.valveOpen = false;
+            }
+
+            // Step 2: Swirl (Approximated by Hand Hover + movement, here simulated by Hover in zone)
+            if (inFlask && gesture === 'Hover') {
+                s.swirlFactor += 0.1;
+                if(s.swirlFactor > 5 && !this.steps[1].done && this.steps[0].done) {
+                    this.steps[1].done = true;
+                    updateStepsUI();
+                    logMsg("Flask swirled. Solution mixed.");
+                    Sound.success();
+                }
+                
+                // Calculate pH based on mixing
+                // Weak acid (ph 2) + Strong base. Equivalence roughly at 25mL
+                let targetPh = 2.0 + (s.titrantAdded / 25) * 5; 
+                if(s.titrantAdded > 24) targetPh += (s.titrantAdded-24)*2; // spike near equivalence
+                s.ph = Math.min(14, targetPh);
+                
+                // Phenolphthalein indicator logic
+                if (s.ph < 8.2) {
+                    s.color = [255, 255, 255, 0.1]; // clear
+                } else if (s.ph >= 8.2 && s.ph <= 10.0) {
+                    s.color = [255, 105, 180, 0.6]; // pink
+                } else {
+                    s.color = [255, 20, 147, 0.9]; // dark pink
+                }
+            }
+
+            // Step 3: Check pH
+            if (inFlask && gesture === 'OpenPalm') {
+                uiPh.innerText = s.ph.toFixed(2);
+                if(s.ph > 7.0 && !this.steps[2].done && this.steps[1].done) {
+                    this.steps[2].done = true;
+                    updateStepsUI();
+                    logMsg("Titration complete! Endpoint reached.", "#3b82f6");
+                    Sound.success();
+                }
+            }
+        },
+        draw: function(ctx, w, h) {
+            const s = this.state;
+            
+            // Draw Stand
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(w*0.3, h*0.1, 10, h*0.8);
+            ctx.fillRect(w*0.2, h*0.85, 80, 15); // base
+            
+            // Draw Burette
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(w*0.48, h*0.1, 15, h*0.4);
+            // Burette liquid
+            ctx.fillStyle = 'rgba(200,200,200,0.5)';
+            const bHeight = (s.buretteVol/50) * (h*0.38);
+            ctx.fillRect(w*0.48 + 2, h*0.1 + (h*0.38 - bHeight) + 2, 11, bHeight);
+            
+            // Valve
+            ctx.fillStyle = s.valveOpen ? '#10b981' : '#ef4444';
+            ctx.fillRect(w*0.46, h*0.45, 20, 10);
+
+            // Draw Flask
+            ctx.beginPath();
+            ctx.moveTo(w*0.48, h*0.55); // top neck
+            ctx.lineTo(w*0.52, h*0.55);
+            ctx.lineTo(w*0.52, h*0.65); // bottom neck
+            ctx.lineTo(w*0.6, h*0.8); // bottom right
+            ctx.lineTo(w*0.4, h*0.8); // bottom left
+            ctx.lineTo(w*0.48, h*0.65); // back to neck
+            ctx.closePath();
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.stroke();
+            
+            // Flask Liquid
+            ctx.save();
+            ctx.clip(); // Clip to flask path
+            ctx.fillStyle = `rgba(${s.color[0]}, ${s.color[1]}, ${s.color[2]}, ${s.color[3]})`;
+            const fHeight = (s.flaskVol/100) * (h*0.25);
+            ctx.fillRect(w*0.3, h*0.8 - fHeight, w*0.4, fHeight);
+            ctx.restore();
+
+            // Zones hint
+            drawInteractionZone(ctx, w*0.4, h*0.4, 40, "Valve");
+            drawInteractionZone(ctx, w*0.5, h*0.75, 60, "Flask");
+        }
+    },
+    testtube: {
+        id: 'testtube',
+        name: 'Test Tube Reaction',
+        overview: 'In this experiment, we will use a dropper to add chemicals to a test tube and heat it. Observe the reaction.',
+        steps: [
+            { id: 1, desc: 'Make a Fist to grab the dropper.', done: false },
+            { id: 2, desc: 'Pinch over the test tube to dispense liquid.', done: false },
+            { id: 3, desc: 'Hold an Open Palm over the burner to heat the test tube.', done: false }
+        ],
+        gestures: [
+            { icon: '✊', desc: 'Fist: Grab dropper' },
+            { icon: '🤏', desc: 'Pinch: Drop liquid' },
+            { icon: '🖐️', desc: 'Open Palm: Apply heat' }
+        ],
+        state: {
+            hasDropper: false,
+            dropperX: 0, dropperY: 0,
+            reagentAdded: false,
+            temp: 22.0,
+            reactionComplete: false,
+            tubeColor: 'rgba(100, 200, 255, 0.4)'
+        },
+        init: function() {
+            this.state = { hasDropper: false, reagentAdded: false, temp: 22.0, reactionComplete: false, tubeColor: 'rgba(100, 200, 255, 0.4)' };
+            uiPh.innerText = 'N/A'; uiVol.innerText = '0.0 mL'; uiTemp.innerText = '22.0°C';
+        },
+        update: function(gesture, cx, cy) {
+            const s = this.state;
+            const w = STATE.canvasWidth, h = STATE.canvasHeight;
+            
+            const dropperZone = cx > w*0.7 && cx < w*0.9 && cy > h*0.6 && cy < h*0.8;
+            const tubeZone = cx > w*0.4 && cx < w*0.6 && cy > h*0.4 && cy < h*0.6;
+            const burnerZone = cx > w*0.4 && cx < w*0.6 && cy > h*0.7 && cy < h*0.9;
+
+            // Step 1: Grab Dropper
+            if (dropperZone && gesture === 'Fist' && !s.hasDropper) {
+                if(!STATE.gogglesOn) { showSafetyAlert(); return; }
+                s.hasDropper = true;
+                this.steps[0].done = true;
+                updateStepsUI();
+                logMsg("Reagent dropper picked up.");
+                Sound.success();
+            }
+
+            if (s.hasDropper) {
+                s.dropperX = cx; s.dropperY = cy;
+            } else {
+                s.dropperX = w*0.8; s.dropperY = h*0.7; // default pos
+            }
+
+            // Drop if open palm (release)
+            if (s.hasDropper && gesture === 'OpenPalm' && !tubeZone) {
+                s.hasDropper = false; // dropped it
+            }
+
+            // Step 2: Drop into tube
+            if (s.hasDropper && tubeZone && gesture === 'Pinch') {
+                if(Math.random() > 0.8) {
+                    pSystem.add(cx, cy+20, 'purple', 0, 3, 20);
+                    Sound.drip();
+                }
+                if(!this.steps[1].done) {
+                    s.reagentAdded = true;
+                    s.tubeColor = 'rgba(150, 100, 255, 0.6)';
+                    this.steps[1].done = true;
+                    updateStepsUI();
+                    logMsg("Reagent added to the test tube.");
+                    Sound.success();
+                }
+            }
+
+            // Step 3: Heat
+            if (burnerZone && gesture === 'OpenPalm' && s.reagentAdded) {
+                s.temp += 0.5;
+                uiTemp.innerText = s.temp.toFixed(1) + '°C';
+                
+                // Flame particles
+                pSystem.add(w*0.5 + (Math.random()*10-5), h*0.8, 'rgba(255,100,0,0.8)', 0, -2, 30);
+                
+                if (s.temp > 60 && !this.steps[2].done) {
+                    s.tubeColor = 'rgba(255, 255, 50, 0.8)'; // turns yellow
+                    this.steps[2].done = true;
+                    s.reactionComplete = true;
+                    updateStepsUI();
+                    logMsg("Reaction complete! Precipitation formed.", "#3b82f6");
+                    Sound.success();
+                }
+
+                if (s.temp > 60) {
+                    // Bubbles in tube
+                    if(Math.random()>0.5) pSystem.add(w*0.5 + (Math.random()*10-5), h*0.6, 'rgba(255,255,255,0.8)', 0, -3, 20);
+                    if(Math.random()>0.9) Sound.hiss();
+                }
+            } else if (s.temp > 22) {
+                s.temp -= 0.1; // cool down
+                uiTemp.innerText = s.temp.toFixed(1) + '°C';
+            }
+        },
+        draw: function(ctx, w, h) {
+            const s = this.state;
+            
+            // Draw Rack & Tube
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(w*0.45, h*0.65, w*0.1, h*0.05); // rack base
+            
+            // Tube
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(w*0.48, h*0.4);
+            ctx.lineTo(w*0.48, h*0.6);
+            ctx.arc(w*0.5, h*0.6, w*0.02, Math.PI, 0, true);
+            ctx.lineTo(w*0.52, h*0.4);
+            ctx.stroke();
+            
+            // Liquid
+            ctx.fillStyle = s.tubeColor;
+            ctx.fillRect(w*0.485, h*0.5, w*0.03, h*0.1);
+
+            // Burner
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(w*0.48, h*0.8, w*0.04, h*0.1);
+
+            // Dropper Bottle
+            if (!s.hasDropper) {
+                ctx.fillStyle = 'purple';
+                ctx.fillRect(w*0.78, h*0.7, w*0.04, h*0.1);
+            }
+
+            // Dropper
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(s.dropperX - 5, s.dropperY - 20, 10, 40);
+            ctx.fillStyle = '#000'; // bulb
+            ctx.beginPath();
+            ctx.arc(s.dropperX, s.dropperY - 25, 10, 0, Math.PI*2);
+            ctx.fill();
+
+            drawInteractionZone(ctx, w*0.8, h*0.75, 40, "Reagent");
+            drawInteractionZone(ctx, w*0.5, h*0.5, 50, "Tube");
+            drawInteractionZone(ctx, w*0.5, h*0.85, 40, "Burner");
+        }
+    },
+    flame: {
+        id: 'flame',
+        name: 'Flame Test',
+        overview: 'Test different chemicals in the flame and observe the change in flame color.',
+        steps: [
+            { id: 1, desc: 'Show a Peace sign to grab the wire loop.', done: false },
+            { id: 2, desc: 'Move hand down to dip the loop into the chemical.', done: false },
+            { id: 3, desc: 'Hover the loop over the burner flame to check the color.', done: false }
+        ],
+        gestures: [
+            { icon: '✌️', desc: 'Peace: Grab loop' },
+            { icon: '👇', desc: 'Move Down: Dip' },
+            { icon: '👋', desc: 'Hover: Hold over flame' }
+        ],
+        state: {
+            hasLoop: false,
+            loopX: 0, loopY: 0,
+            saltCoated: null, // 'Cu', 'Sr', 'K'
+            flameColor: 'rgba(100, 150, 255, 0.8)' // Default blue
+        },
+        init: function() {
+            this.state = { hasLoop: false, saltCoated: null, flameColor: 'rgba(100, 150, 255, 0.8)' };
+            uiPh.innerText = 'N/A'; uiVol.innerText = 'N/A'; uiTemp.innerText = '800°C';
+        },
+        update: function(gesture, cx, cy) {
+            const s = this.state;
+            const w = STATE.canvasWidth, h = STATE.canvasHeight;
+
+            // Pick up loop (anywhere)
+            if (gesture === 'Peace') {
+                if(!STATE.gogglesOn) { showSafetyAlert(); return; }
+                s.hasLoop = true;
+                s.loopX = cx; s.loopY = cy;
+                if(!this.steps[0].done) {
+                    this.steps[0].done = true; updateStepsUI();
+                    logMsg("Wire loop picked up."); Sound.success();
+                }
+            } else {
+                s.hasLoop = false;
+                s.loopX = w*0.2; s.loopY = h*0.7; // default rest pos
+            }
+
+            // Dip in salts
+            const inCu = s.hasLoop && cx > w*0.65 && cx < w*0.75 && cy > h*0.75;
+            const inSr = s.hasLoop && cx > w*0.75 && cx < w*0.85 && cy > h*0.75;
+
+            if (inCu) { s.saltCoated = 'Cu'; if(!this.steps[1].done){this.steps[1].done=true; updateStepsUI(); logMsg("Coated with Copper(II) Chloride."); Sound.success(); } }
+            if (inSr) { s.saltCoated = 'Sr'; if(!this.steps[1].done){this.steps[1].done=true; updateStepsUI(); logMsg("Coated with Strontium Chloride."); Sound.success(); } }
+
+            // Flame test
+            const inFlame = s.hasLoop && cx > w*0.4 && cx < w*0.6 && cy > h*0.5 && cy < h*0.8;
+            if (inFlame && s.saltCoated) {
+                if (s.saltCoated === 'Cu') s.flameColor = 'rgba(0, 255, 100, 0.8)'; // Green-blue
+                if (s.saltCoated === 'Sr') s.flameColor = 'rgba(255, 0, 0, 0.8)'; // Crimson red
+                
+                if(!this.steps[2].done) {
+                    this.steps[2].done = true; updateStepsUI();
+                    logMsg(`Flame color observed! Element: ${s.saltCoated === 'Cu' ? 'Copper (Green)' : 'Strontium (Red)'}`, "#3b82f6");
+                    Sound.success();
+                }
+            } else {
+                s.flameColor = 'rgba(100, 150, 255, 0.8)'; // Reset to blue
+            }
+
+            // Flame particles
+            for(let i=0; i<3; i++) {
+                pSystem.add(w*0.5 + (Math.random()*20-10), h*0.75, s.flameColor, (Math.random()-0.5), -Math.random()*5, 20 + Math.random()*20);
+            }
+        },
+        draw: function(ctx, w, h) {
+            const s = this.state;
+            
+            // Bunsen Burner
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(w*0.45, h*0.75, w*0.1, h*0.15); // base
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(w*0.48, h*0.6, w*0.04, h*0.15); // barrel
+
+            // Salt Dishes
+            ctx.fillStyle = '#e2e8f0';
+            ctx.beginPath(); ctx.ellipse(w*0.7, h*0.85, 20, 10, 0, 0, Math.PI*2); ctx.fill(); // Cu Dish
+            ctx.beginPath(); ctx.ellipse(w*0.8, h*0.85, 20, 10, 0, 0, Math.PI*2); ctx.fill(); // Sr Dish
+            
+            // Salts
+            ctx.fillStyle = '#059669'; // Cu Green
+            ctx.beginPath(); ctx.ellipse(w*0.7, h*0.84, 15, 5, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#fff'; // Sr White
+            ctx.beginPath(); ctx.ellipse(w*0.8, h*0.84, 15, 5, 0, 0, Math.PI*2); ctx.fill();
+
+            // Wire Loop
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(s.loopX, s.loopY);
+            ctx.lineTo(s.loopX - 50, s.loopY + 20); // Handle
+            ctx.stroke();
+            // Loop end
+            ctx.beginPath();
+            ctx.arc(s.loopX, s.loopY, 5, 0, Math.PI*2);
+            ctx.fillStyle = s.saltCoated === 'Cu' ? '#059669' : (s.saltCoated === 'Sr' ? '#fff' : 'transparent');
+            ctx.fill();
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = '#fff'; ctx.font = '12px Arial';
+            ctx.fillText('Cu', w*0.68, h*0.9);
+            ctx.fillText('Sr', w*0.78, h*0.9);
+            
+            drawInteractionZone(ctx, w*0.5, h*0.65, 50, "Flame");
+        }
+    }
+};
+
+// --- Helper Functions ---
+function drawInteractionZone(ctx, x, y, radius, label) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Highlight if cursor is inside
+    if (calculateDistance({x, y}, {x: STATE.cursorX, y: STATE.cursorY}) < radius) {
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+        ctx.fill();
+        
+        // Draw tooltip directly on canvas
+        ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+        const textWidth = ctx.measureText(label).width + 20;
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(x - textWidth/2, y - radius - 40, textWidth, 28);
+        
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x - textWidth/2, y - radius - 40, textWidth, 28);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, x, y - radius - 26);
+    }
+}
+
+function updateStepsUI() {
+    const exp = Experiments[STATE.currentExperiment];
+    
+    // Overview update
+    document.getElementById('exp-overview').innerText = exp.overview;
+    
+    // Make sure overlay is visible when a new step starts
+    document.getElementById('ar-instruction-overlay').style.display = 'block';
+    
+    procedureList.innerHTML = '';
+    let currentStepFound = false;
+    
+    exp.steps.forEach(step => {
+        if (step.done) {
+            // Completed steps
+            const li = document.createElement('li');
+            li.className = 'completed';
+            li.innerText = step.desc;
+            procedureList.appendChild(li);
+        } else if (!currentStepFound) {
+            // Current step
+            currentStepFound = true;
+            
+            // Side panel madhe update
+            document.getElementById('current-step-text').innerText = step.desc;
+            document.getElementById('current-step-box').style.borderColor = 'var(--accent-blue)';
+            
+            // AR Screen chya Pop-up madhe update
+            document.getElementById('ar-instruction-text').innerText = step.desc;
+            document.getElementById('ar-instruction-overlay').style.borderColor = 'var(--accent-blue)';
+            document.getElementById('ar-instruction-text').style.color = 'var(--text-light)';
+        }
+    });
+
+    // When all steps are done
+    if (!currentStepFound) {
+        // Side panel success
+        document.getElementById('current-step-text').innerText = "🎉 Experiment Successfully Completed!";
+        document.getElementById('current-step-box').style.borderColor = 'var(--accent-green)';
+        document.getElementById('current-step-text').style.color = 'var(--accent-green)';
+        
+        // AR Screen Pop-up success
+        document.getElementById('ar-instruction-text').innerText = "🎉 Experiment Successfully Completed!";
+        document.getElementById('ar-instruction-overlay').style.borderColor = 'var(--accent-green)';
+        document.getElementById('ar-instruction-text').style.color = 'var(--accent-green)';
+    } else {
+        document.getElementById('current-step-text').style.color = 'var(--text-light)';
+    }
+
+    const guide = document.getElementById('gesture-guide');
+    guide.innerHTML = '';
+    exp.gestures.forEach(g => {
+        guide.innerHTML += `<div class="gesture-icon">${g.icon}</div><div>${g.desc}</div>`;
+    });
+}
+
+function showSafetyAlert() {
+    const alert = document.getElementById('safety-alert');
+    alert.style.display = 'block';
+    Sound.error();
+    setTimeout(() => alert.style.display = 'none', 3000);
+}
+
+// --- Main Render Loop (Called by MediaPipe) ---
+function onResults(results) {
+    // Hide loading
+    if (!STATE.isLoaded) {
+        STATE.isLoaded = true;
+        loadingEl.style.opacity = '0';
+        setTimeout(() => loadingEl.style.display = 'none', 500);
+        logMsg("AI Vision System Connected.", "#10b981");
+        Experiments[STATE.currentExperiment].init();
+        updateStepsUI();
+    }
+
+    // Set canvas dimensions to match video ratio
+    canvasEl.width = videoEl.videoWidth || 640;
+    canvasEl.height = videoEl.videoHeight || 480;
+    STATE.canvasWidth = canvasEl.width;
+    STATE.canvasHeight = canvasEl.height;
+
+    // 1. Draw Mirrored Camera Feed
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(results.image, -canvasEl.width, 0, canvasEl.width, canvasEl.height);
+    ctx.restore();
+
+    // Apply dark overlay to make AR elements pop
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+
+    // 2. Process Hand
+    let gesture = 'None';
+    
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        STATE.handPresent = true;
+        
+        // MIRROR LANDMARKS horizontally so they match the mirrored video
+        const landmarks = results.multiHandLandmarks[0];
+        const mirroredLandmarks = landmarks.map(l => ({
+            x: 1 - l.x,
+            y: l.y,
+            z: l.z,
+            visibility: l.visibility
+        }));
+        
+        // Convert normalized coordinates to canvas pixels
+        const pxLandmarks = mirroredLandmarks.map(l => ({
+            x: l.x * canvasEl.width, 
+            y: l.y * canvasEl.height
+        }));
+
+        // Cursor is index finger tip (8)
+        STATE.cursorX = pxLandmarks[8].x;
+        STATE.cursorY = pxLandmarks[8].y;
+
+        // Detect Gesture
+        gesture = detectGesture(pxLandmarks);
+        STATE.currentGesture = gesture;
+
+        // Draw Hand Skeleton
+        drawConnectors(ctx, mirroredLandmarks, HAND_CONNECTIONS, {color: 'rgba(59, 130, 246, 0.5)', lineWidth: 3});
+        drawLandmarks(ctx, mirroredLandmarks, {color: '#10b981', lineWidth: 1, radius: 3});
+
+        // Draw AR Cursor
+        ctx.beginPath();
+        ctx.arc(STATE.cursorX, STATE.cursorY, 10, 0, Math.PI*2);
+        ctx.fillStyle = gesture === 'Pinch' || gesture === 'Fist' ? 'rgba(239, 68, 68, 0.8)' : 'rgba(59, 130, 246, 0.8)';
+        ctx.fill();
+
+    } else {
+        STATE.handPresent = false;
+        STATE.currentGesture = 'None';
+    }
+
+    // Update UI Status
+    document.getElementById('detected-gesture').innerText = `Hand: ${STATE.handPresent ? 'Detected' : 'Not Found'} | Gesture: ${STATE.currentGesture}`;
+
+    // 3. Update & Draw Experiment
+    const exp = Experiments[STATE.currentExperiment];
+    exp.update(gesture, STATE.cursorX, STATE.cursorY);
+    exp.draw(ctx, canvasEl.width, canvasEl.height);
+
+    // 4. Update Particles
+    pSystem.updateAndDraw(ctx);
+}
+
+// --- Initialization ---
+
+async function initAR() {
+    try {
+        const hands = new Hands({locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+        }});
+        
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7
+        });
+        
+        hands.onResults(onResults);
+
+        const camera = new Camera(videoEl, {
+            onFrame: async () => {
+                await hands.send({image: videoEl});
+            },
+            width: 1280,
+            height: 720
+        });
+        
+        await camera.start();
+    } catch (err) {
+        document.getElementById('loading-text').innerText = "Camera access denied or error occurred.";
+        document.getElementById('loading-text').style.color = "#ef4444";
+        console.error(err);
+    }
+}
+
+// --- Event Listeners ---
+
+expSelector.addEventListener('change', (e) => {
+    STATE.currentExperiment = e.target.value;
+    Experiments[STATE.currentExperiment].init();
+    updateStepsUI();
+    logMsg(`Switched to: ${Experiments[STATE.currentExperiment].name}`);
+});
+
+btnGoggles.addEventListener('click', () => {
+    STATE.gogglesOn = !STATE.gogglesOn;
+    if (STATE.gogglesOn) {
+        btnGoggles.innerText = '🥽 Remove Goggles';
+        btnGoggles.className = 'btn-primary';
+        logMsg("Safety goggles ON.", "#10b981");
+    } else {
+        btnGoggles.innerText = '🥽 Wear Goggles';
+        btnGoggles.className = 'btn-warning';
+        logMsg("Safety goggles OFF. Warning!", "#ef4444");
+    }
+});
+
+btnReset.addEventListener('click', () => {
+    Experiments[STATE.currentExperiment].init();
+    Experiments[STATE.currentExperiment].steps.forEach(s => s.done = false);
+    updateStepsUI();
+    logMsg("Experiment reset.");
+});
+
+// Close AR Pop-up event
+document.getElementById('close-ar-popup').addEventListener('click', () => {
+    document.getElementById('ar-instruction-overlay').style.display = 'none';
+});
+
+// Show AR Pop-up event (Navin button sathi logic)
+document.getElementById('btn-show-task').addEventListener('click', () => {
+    document.getElementById('ar-instruction-overlay').style.display = 'block';
+});
+
+// Start application
+window.onload = () => {
+    logMsg("Booting AR Engine...");
+    initAR();
+};
+
+</script>
+</body>
+</html>

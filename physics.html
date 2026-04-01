@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhysiLab AR - Interactive Physics Sandbox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Cannon-es for modern physics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Inter', sans-serif; }
+        canvas { display: block; }
+        #video-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+            display: none;
+            transform: scaleX(-1); /* Mirror for natural feel */
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-tool {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-tool:active { transform: scale(0.95); }
+        .stat-badge {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Camera Background for AR -->
+    <video id="video-bg" autoplay playsinline></video>
+
+    <!-- UI Overlay -->
+    <div id="ui-root" class="fixed inset-0 pointer-events-none flex flex-col justify-between p-4 md:p-6">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-start pointer-events-auto">
+            <div class="glass-panel p-4 rounded-2xl shadow-2xl">
+                <h1 class="text-white font-bold text-xl flex items-center gap-2">
+                    <span class="text-blue-400">⚛️</span> PhysiLab <span class="text-xs font-normal opacity-50 bg-white/10 px-2 py-1 rounded">v1.0</span>
+                </h1>
+                <p class="text-slate-400 text-xs mt-1">Experimental AR Physics Sandbox</p>
+            </div>
+            
+            <div class="flex flex-col gap-2">
+                <button id="toggle-ar" class="glass-panel px-4 py-2 rounded-xl text-white text-sm font-medium hover:bg-white/20 transition flex items-center gap-2">
+                    <span id="ar-status">📷 Enable AR Mode</span>
+                </button>
+                <div class="glass-panel p-3 rounded-xl text-white text-xs space-y-1">
+                    <div class="flex justify-between gap-4"><span>Objects:</span> <span id="count-display">0</span></div>
+                    <div class="flex justify-between gap-4"><span>FPS:</span> <span id="fps-display">60</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls (Bottom) -->
+        <div class="flex flex-col md:flex-row justify-between items-end gap-4 pointer-events-auto">
+            
+            <!-- Tool Palette -->
+            <div class="glass-panel p-2 rounded-2xl flex gap-2 overflow-x-auto max-w-full">
+                <button onclick="spawnObject('sphere')" class="btn-tool bg-blue-600 hover:bg-blue-500 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-lg" title="Spawn Ball">
+                    ⚪
+                </button>
+                <button onclick="spawnObject('box')" class="btn-tool bg-indigo-600 hover:bg-indigo-500 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-lg" title="Spawn Block">
+                    📦
+                </button>
+                <button onclick="spawnObject('ramp')" class="btn-tool bg-amber-600 hover:bg-amber-500 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-lg" title="Spawn Ramp">
+                    📐
+                </button>
+                <div class="w-[1px] bg-white/10 mx-1"></div>
+                <button onclick="clearWorld()" class="btn-tool bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white w-12 h-12 rounded-xl flex items-center justify-center border border-red-500/30 shadow-lg" title="Clear Lab">
+                    🗑️
+                </button>
+                <button id="pause-btn" onclick="togglePause()" class="btn-tool bg-white/10 hover:bg-white/20 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-lg">
+                    ⏸️
+                </button>
+            </div>
+
+            <!-- Parameters -->
+            <div class="glass-panel p-4 rounded-2xl w-full md:w-64 space-y-4">
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label class="text-white text-xs font-semibold uppercase tracking-wider">Gravity</label>
+                        <span id="grav-val" class="stat-badge">-9.8</span>
+                    </div>
+                    <input type="range" id="gravity-range" min="-20" max="10" step="0.5" value="-9.8" class="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-400">
+                </div>
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label class="text-white text-xs font-semibold uppercase tracking-wider">Elasticity</label>
+                        <span id="bounc-val" class="stat-badge">0.7</span>
+                    </div>
+                    <input type="range" id="bounciness-range" min="0" max="1.5" step="0.1" value="0.7" class="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-400">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Overlay -->
+    <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 glass-panel px-4 py-2 rounded-full text-white text-sm opacity-0 transition-opacity duration-300 pointer-events-none">
+        Copied to clipboard
+    </div>
+
+    <script>
+        // --- Core Variables ---
+        let scene, camera, renderer, world;
+        let meshes = [];
+        let bodies = [];
+        let isPaused = false;
+        let isAR = false;
+        let videoStream = null;
+        let lastTime = 0;
+        let frameCount = 0;
+        let fps = 60;
+
+        // Physics Materials
+        let defaultMaterial, groundMaterial, slipperyMaterial;
+
+        // Initialize App
+        window.onload = init;
+
+        function init() {
+            setupThreeJS();
+            setupPhysics();
+            setupEnvironment();
+            setupEventListeners();
+            animate();
+            
+            showToast("Welcome to PhysiLab! Use tools to begin.");
+        }
+
+        function setupThreeJS() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambient);
+
+            const directional = new THREE.DirectionalLight(0xffffff, 1);
+            directional.position.set(5, 10, 5);
+            directional.castShadow = true;
+            directional.shadow.mapSize.width = 1024;
+            directional.shadow.mapSize.height = 1024;
+            scene.add(directional);
+        }
+
+        function setupPhysics() {
+            world = new CANNON.World();
+            world.gravity.set(0, -9.82, 0);
+            world.broadphase = new CANNON.NaiveBroadphase();
+            world.solver.iterations = 10;
+
+            defaultMaterial = new CANNON.Material('default');
+            const contactMat = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
+                friction: 0.3,
+                restitution: 0.7
+            });
+            world.addContactMaterial(contactMat);
+
+            // Static Ground
+            const groundShape = new CANNON.Plane();
+            const groundBody = new CANNON.Body({ mass: 0, material: defaultMaterial });
+            groundBody.addShape(groundShape);
+            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+            world.addBody(groundBody);
+        }
+
+        function setupEnvironment() {
+            // Virtual Grid Floor (Hidden in AR)
+            const grid = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+            grid.name = "grid";
+            scene.add(grid);
+
+            // Visible Floor Plane
+            const planeGeo = new THREE.PlaneGeometry(20, 20);
+            const planeMat = new THREE.MeshPhongMaterial({ 
+                color: 0x1e293b, 
+                transparent: true, 
+                opacity: 0.5,
+                side: THREE.DoubleSide
+            });
+            const plane = new THREE.Mesh(planeGeo, planeMat);
+            plane.rotation.x = -Math.PI / 2;
+            plane.receiveShadow = true;
+            plane.name = "floor";
+            scene.add(plane);
+        }
+
+        function spawnObject(type) {
+            const mass = 1;
+            let shape, geometry, material, mesh, body;
+            const pos = { x: (Math.random() - 0.5) * 4, y: 8, z: (Math.random() - 0.5) * 4 };
+
+            const color = new THREE.Color().setHSL(Math.random(), 0.7, 0.6);
+
+            if (type === 'sphere') {
+                const radius = 0.5;
+                shape = new CANNON.Sphere(radius);
+                geometry = new THREE.SphereGeometry(radius, 32, 32);
+                material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.2 });
+            } else if (type === 'box') {
+                const size = 0.5;
+                shape = new CANNON.Box(new CANNON.Vec3(size, size, size));
+                geometry = new THREE.BoxGeometry(size * 2, size * 2, size * 2);
+                material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.5 });
+            } else if (type === 'ramp') {
+                const w = 2, h = 0.2, d = 1;
+                shape = new CANNON.Box(new CANNON.Vec3(w, h, d));
+                geometry = new THREE.BoxGeometry(w * 2, h * 2, d * 2);
+                material = new THREE.MeshStandardMaterial({ color: 0x64748b });
+                
+                body = new CANNON.Body({ mass: 0 }); // Static
+                body.addShape(shape);
+                body.position.set(0, 1, 0);
+                body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), 0.3);
+            }
+
+            if (!body) {
+                body = new CANNON.Body({ mass: mass, material: defaultMaterial });
+                body.addShape(shape);
+                body.position.set(pos.x, pos.y, pos.z);
+                // Random spin
+                body.angularVelocity.set(Math.random()*2, Math.random()*2, Math.random()*2);
+            }
+
+            mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            world.addBody(body);
+            scene.add(mesh);
+            bodies.push(body);
+            meshes.push(mesh);
+            
+            updateCounter();
+        }
+
+        function clearWorld() {
+            bodies.forEach(b => world.remove(b));
+            meshes.forEach(m => scene.remove(m));
+            bodies = [];
+            meshes = [];
+            updateCounter();
+            showToast("Laboratory Cleared");
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            document.getElementById('pause-btn').textContent = isPaused ? '▶️' : '⏸️';
+        }
+
+        function setupEventListeners() {
+            // Responsiveness
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Controls
+            document.getElementById('gravity-range').addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                world.gravity.set(0, val, 0);
+                document.getElementById('grav-val').textContent = val.toFixed(1);
+            });
+
+            document.getElementById('bounciness-range').addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                document.getElementById('bounc-val').textContent = val.toFixed(1);
+                // Update contact materials
+                world.contactmaterials.forEach(cm => {
+                    cm.restitution = val;
+                });
+            });
+
+            // Camera / Interaction
+            let isDragging = false;
+            let prevMouse = { x: 0, y: 0 };
+
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                prevMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => isDragging = false);
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - prevMouse.x;
+                    const deltaY = e.clientY - prevMouse.y;
+                    
+                    // Orbit rotation simulation
+                    scene.rotation.y += deltaX * 0.01;
+                    
+                    prevMouse = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            // Touch events for mobile
+            renderer.domElement.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            });
+            window.addEventListener('touchend', () => isDragging = false);
+            window.addEventListener('touchmove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.touches[0].clientX - prevMouse.x;
+                    scene.rotation.y += deltaX * 0.01;
+                    prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            });
+
+            // AR Toggle
+            document.getElementById('toggle-ar').onclick = toggleAR;
+        }
+
+        async function toggleAR() {
+            const video = document.getElementById('video-bg');
+            const status = document.getElementById('ar-status');
+            const floor = scene.getObjectByName('floor');
+            const grid = scene.getObjectByName('grid');
+
+            if (!isAR) {
+                try {
+                    videoStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: 'environment' } 
+                    });
+                    video.srcObject = videoStream;
+                    video.style.display = 'block';
+                    isAR = true;
+                    status.innerHTML = "🚫 Disable AR";
+                    
+                    // Adjust scene for AR
+                    if (floor) floor.material.opacity = 0.1;
+                    if (grid) grid.visible = false;
+                    renderer.setClearAlpha(0);
+                    showToast("AR Mode Active");
+                } catch (err) {
+                    console.error(err);
+                    showToast("Camera Access Denied");
+                }
+            } else {
+                if (videoStream) {
+                    videoStream.getTracks().forEach(track => track.stop());
+                }
+                video.style.display = 'none';
+                isAR = false;
+                status.innerHTML = "📷 Enable AR Mode";
+                
+                if (floor) floor.material.opacity = 0.5;
+                if (grid) grid.visible = true;
+                renderer.setClearAlpha(1);
+                showToast("Returned to Virtual Lab");
+            }
+        }
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+
+            if (!isPaused) {
+                // Step physics
+                world.step(1/60);
+
+                // Sync meshes
+                for (let i = 0; i < bodies.length; i++) {
+                    meshes[i].position.copy(bodies[i].position);
+                    meshes[i].quaternion.copy(bodies[i].quaternion);
+
+                    // Remove if fallen too far
+                    if (bodies[i].position.y < -20) {
+                        world.remove(bodies[i]);
+                        scene.remove(meshes[i]);
+                        bodies.splice(i, 1);
+                        meshes.splice(i, 1);
+                        updateCounter();
+                    }
+                }
+            }
+
+            // FPS Counter
+            frameCount++;
+            if (time > lastTime + 1000) {
+                fps = Math.round((frameCount * 1000) / (time - lastTime));
+                document.getElementById('fps-display').textContent = fps;
+                frameCount = 0;
+                lastTime = time;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function updateCounter() {
+            document.getElementById('count-display').textContent = bodies.length;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
