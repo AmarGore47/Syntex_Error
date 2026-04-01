@@ -133,21 +133,12 @@ function buyItem(id) {
 
 function startSimulation(id) {
     const sim = state.sims.find(s => s.id === id);
-    if (!sim || sim.status === 'Locked') return;
-
-    if (sim.category === "chemistry") {
-        window.location.href = "chemistry.html";
-    } 
-    else if (sim.category === "physics") {
-        window.location.href = "physics.html";
-    } 
-    else if (sim.category === "biology") {
-        // Biology simulations will use the general simulation page
-        window.location.href = "simulation.html";
-    } 
-    else {
-        window.location.href = "simulation.html";
-    }
+    if (sim.status === 'Locked') return;
+    document.getElementById('active-sim-title').innerText = sim.title;
+    document.getElementById('active-sim-emoji').innerText = sim.image;
+    document.getElementById('active-sim-progress-bar').style.width = `${sim.progress}%`;
+    document.getElementById('sim-overlay').classList.remove('hidden');
+    lucide.createIcons();
 }
 function exitSimulation() {
     document.getElementById('sim-overlay').classList.add('hidden');
