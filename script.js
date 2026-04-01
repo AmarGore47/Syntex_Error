@@ -1,94 +1,37 @@
-// =====================
-// APPLICATION STATE
-// =====================
-const state = {
-    activeTab: 'dashboard',
-    selectedCategory: 'all',
-    searchQuery: '',
-    user: {
-        name: "Felix Scientist",
-        seed: "Felix",
-        level: 24,
-        gems: 144,
-        coins: 2321,
-        points: 1240,
-        simsCompleted: 42,
-        badges: ["atom", "brain"],
-        inventory: []
-    },
-    leaderboard: [
-        { name: "Brody Bennet", points: 48522, rank: 1, seed: "Brody", trend: 'up', division: 'Diamond' },
-        { name: "Jack Nicholson", points: 41322, rank: 2, seed: "Jack", trend: 'up', division: 'Diamond' },
-        { name: "Timothy Bell", points: 21780, rank: 3, seed: "Tim", trend: 'down', division: 'Platinum' },
-        { name: "Sarah Connor", points: 19231, rank: 4, seed: "Sarah", trend: 'up', division: 'Platinum' },
-        { name: "Alex Mercer", points: 18522, rank: 5, seed: "Alex", trend: 'same', division: 'Gold' },
-        { name: "Lara Croft", points: 17100, rank: 6, seed: "Lara", trend: 'up', division: 'Gold' },
-        { name: "Nathan Drake", points: 16500, rank: 7, seed: "Drake", trend: 'down', division: 'Silver' }
-    ],
-    challenges: [
-        { id: 'c1', title: "Titration King", type: "Daily", progress: 10, total: 32, reward: 200, badge: 'flask-conical', claimed: false, icon: "flask-conical", color: "orange" },
-        { id: 'c2', title: "Energy Pioneer", type: "Weekly", progress: 5, total: 5, reward: 500, badge: 'zap', claimed: false, icon: "zap", color: "blue" },
-        { id: 'c3', title: "Micro-Explorer", type: "Legendary", progress: 12, total: 20, reward: 1000, badge: 'microscope', claimed: false, icon: "microscope", color: "green" }
-    ],
-    sims: [
-        { id: 1, title: "The Human Mind", image: "🧠", status: "Unlocked", progress: 65, difficulty: "Advanced", category: "biology" },
-        { id: 2, title: "Molecular Fusion", image: "🧪", status: "In Progress", progress: 42, difficulty: "Intermediate", category: "chemistry" },
-        { id: 3, title: "Acid-Base Titration", image: "⚗️", status: "Unlocked", progress: 0, difficulty: "Beginner", category: "chemistry" },
-        { id: 4, title: "Microscope Lab", image: "🔬", status: "Unlocked", progress: 15, difficulty: "Intermediate", category: "biology" },
-        { id: 5, title: "Circuit Builder", image: "🔋", status: "Unlocked", progress: 85, difficulty: "Intermediate", category: "physics" },
-        { id: 6, title: "Periodic Table Quest", image: "📔", status: "Unlocked", progress: 10, difficulty: "Beginner", category: "chemistry" }
-    ],
-    badgeData: {
-        "atom": { name: "Quantum Starter", icon: "atom", color: "text-blue-500", bg: "bg-blue-100" },
-        "brain": { name: "Mind Specialist", icon: "brain", color: "text-purple-500", bg: "bg-purple-100" },
-        "zap": { name: "Energy Pioneer", icon: "zap", color: "text-yellow-500", bg: "bg-yellow-100" },
-        "flask-conical": { name: "Titration King", icon: "flask-conical", color: "text-orange-500", bg: "bg-orange-100" },
-        "microscope": { name: "Micro-Explorer", icon: "microscope", color: "text-green-500", bg: "bg-green-100" }
-    }
-};
-
-const shopItems = [
-    { id: 'm1', title: "Organic Chemistry PDF", price: 500, type: "PDF Guide", icon: "book-open", color: "orange" },
-    { id: 'm2', title: "Quantum Masterclass", price: 1200, type: "Video Course", icon: "play-circle", color: "blue" },
-    { id: 'm3', title: "Lab Safety Toolkit", price: 300, type: "Interactive", icon: "shield-check", color: "green" }
+// DATA
+const simulations = [
+    { id: 1, title: "The Human Mind", description: "A deep dive into thoughts, emotions, creations, and behavior.", category: "biology", status: "Unlocked", progress: 65, image: "🧠", reward: 145, difficulty: "Advanced" },
+    { id: 2, title: "Molecular Dynamics", description: "Explore the behavior of atoms in complex systems.", category: "chemistry", status: "In Progress", progress: 42, image: "🧪", reward: 120, difficulty: "Intermediate" },
+    { id: 3, title: "Quantum Mechanics 101", description: "Understand the fundamental principles of quantum states.", category: "physics", status: "Locked", progress: 0, image: "⚛️", reward: 300, difficulty: "Expert" },
+    { id: 4, title: "The Industrial Revolution", description: "Revisit the era that changed modern production forever.", category: "history", status: "Unlocked", progress: 100, image: "⚙️", reward: 80, difficulty: "Beginner" },
+    { id: 5, title: "Cellular Respiration", description: "Visualize how cells convert nutrients into energy.", category: "biology", status: "Unlocked", progress: 15, image: "🧬", reward: 200, difficulty: "Intermediate" },
+    { id: 6, title: "Acid-Base Titration", description: "Determine the concentration of an unknown acid solution.", category: "chemistry", status: "Unlocked", progress: 88, image: "⚗️", reward: 150, difficulty: "Beginner" }
 ];
 
-// =====================
-// INITIALIZE APP
-// =====================
+let state = {
+    activeTab: 'dashboard',
+    selectedCategory: 'all',
+    searchQuery: ''
+};
+
+// INITIALIZATION
 window.onload = () => {
     lucide.createIcons();
-    updateHeader();
     render();
 };
 
-// =====================
-// HEADER UPDATE
-// =====================
-function updateHeader() {
-    const nameEl = document.getElementById('header-user-name');
-    const avatarEl = document.getElementById('header-avatar');
-    const gemsEl = document.getElementById('header-gems');
-    const coinsEl = document.getElementById('header-coins');
-
-    if (nameEl) nameEl.innerText = state.user.name;
-    if (avatarEl) avatarEl.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${state.user.seed}`;
-    if (gemsEl) gemsEl.innerText = state.user.gems;
-    if (coinsEl) coinsEl.innerText = state.user.coins.toLocaleString();
-}
-
-// =====================
-// NAVIGATION
-// =====================
+// STATE ACTIONS
 function switchTab(tabId) {
     state.activeTab = tabId;
-
-    document.querySelectorAll('.nav-item').forEach(el => 
-        el.classList.remove('active-nav')
-    );
-
-    const activeNav = document.getElementById(`nav-${tabId}`);
-    if (activeNav) activeNav.classList.add('active-nav');
+    state.selectedCategory = 'all';
+    
+    // Update Nav UI
+    document.querySelectorAll('.nav-item').forEach(el => {
+        el.classList.remove('active-nav');
+        el.classList.add('text-slate-500', 'hover:bg-slate-50');
+    });
+    document.getElementById(`nav-${tabId}`).classList.add('active-nav');
+    document.getElementById(`nav-${tabId}`).classList.remove('text-slate-500', 'hover:bg-slate-50');
 
     render();
 }
@@ -100,14 +43,11 @@ function filterCategory(catId) {
 }
 
 function handleSearch() {
-    const input = document.getElementById('search-input');
-    state.searchQuery = input ? input.value.toLowerCase() : '';
-    render();
+    state.searchQuery = document.getElementById('search-input').value.toLowerCase();
+    if (state.activeTab !== 'sims') switchTab('sims');
+    else render();
 }
 
-// =====================
-// SIMULATION ROUTING
-// =====================
 function startSimulation(id) {
     const sim = state.sims.find(s => s.id === id);
     if (!sim || sim.status === 'Locked') return;
@@ -119,125 +59,281 @@ function startSimulation(id) {
         window.location.href = "physics.html";
     } 
     else if (sim.category === "biology") {
-        window.location.href = "biology.html";
+        // Biology simulations will use the general simulation page
+        window.location.href = "simulation.html";
     } 
     else {
         window.location.href = "simulation.html";
     }
 }
 
-// =====================
-// DASHBOARD + VIEWS
-// =====================
+function exitSimulation() {
+    document.getElementById('sim-overlay').classList.add('hidden');
+}
+
+// RENDERING ENGINE
 function render() {
     const container = document.getElementById('view-container');
-    if (!container) return;
-
     container.innerHTML = '';
 
-    if (state.activeTab === 'dashboard') renderDashboard(container);
-    else if (state.activeTab === 'sims') renderSims(container);
-    else if (state.activeTab === 'challenges') renderChallenges(container);
-    else if (state.activeTab === 'store') renderStore(container);
-    else if (state.activeTab === 'profile') renderProfile(container);
+    if (state.activeTab === 'dashboard') {
+        renderDashboard(container);
+    } else if (state.activeTab === 'sims') {
+        renderSims(container);
+    } else if (state.activeTab === 'challenges') {
+        renderChallenges(container);
+    } else if (state.activeTab === 'profile') {
+        renderProfile(container);
+    }
 
     lucide.createIcons();
 }
 
-// =====================
-// DASHBOARD VIEW
-// =====================
 function renderDashboard(container) {
     container.innerHTML = `
-        <h1 class="text-3xl font-black mb-6">Welcome back, ${state.user.name}</h1>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            ${state.sims.slice(0,3).map(sim => `
-                <div class="bg-white p-6 rounded-2xl border">
-                    <div class="text-4xl mb-4">${sim.image}</div>
-                    <h3 class="font-bold mb-2">${sim.title}</h3>
-                    <button onclick="startSimulation(${sim.id})"
-                        class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm">
-                        Start Simulation
-                    </button>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Progress Hero -->
+                <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 relative overflow-hidden">
+                    <div class="flex justify-between items-start relative z-10">
+                        <div>
+                            <h2 class="text-slate-400 font-medium mb-1 uppercase tracking-wider text-xs">Overall Progress</h2>
+                            <h1 class="text-3xl font-extrabold text-slate-800">Complete Today's Tasks</h1>
+                            <p class="text-slate-500 mt-2">You have 12 challenges active this week.</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-4xl font-black text-slate-800">78%</div>
+                            <div class="flex items-center gap-1 text-green-500 text-xs font-bold justify-end">
+                                <i data-lucide="trending-up" class="w-3 h-3"></i> 2.3%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-8 flex items-end gap-2 h-32">
+                        ${[40, 20, 60, 45, 80, 50, 90, 70, 65, 85, 95, 100].map(h => `
+                            <div class="flex-1 bg-slate-100 rounded-t-lg relative group transition-all duration-300 hover:bg-blue-500" style="height: ${h}%">
+                                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">${h}%</div>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
-            `).join('')}
+
+                <!-- Categories -->
+                <section>
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold">Select Category</h3>
+                        <button onclick="switchTab('sims')" class="text-blue-500 text-sm font-semibold flex items-center gap-1 hover:gap-2 transition-all">
+                            View all <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div onclick="filterCategory('chemistry')" class="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-md transition-all cursor-pointer group">
+                            <div class="bg-orange-100 text-orange-500 w-12 h-12 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><i data-lucide="flask-conical"></i></div>
+                            <h4 class="font-bold text-slate-800 text-sm">Chemistry</h4>
+                        </div>
+                        <div onclick="filterCategory('biology')" class="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-md transition-all cursor-pointer group">
+                            <div class="bg-blue-100 text-blue-500 w-12 h-12 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><i data-lucide="activity"></i></div>
+                            <h4 class="font-bold text-slate-800 text-sm">Biology</h4>
+                        </div>
+                        <div onclick="filterCategory('physics')" class="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-md transition-all cursor-pointer group">
+                            <div class="bg-green-100 text-green-500 w-12 h-12 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><i data-lucide="target"></i></div>
+                            <h4 class="font-bold text-slate-800 text-sm">Physics</h4>
+                        </div>
+                        <div onclick="filterCategory('history')" class="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-md transition-all cursor-pointer group">
+                            <div class="bg-purple-100 text-purple-500 w-12 h-12 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><i data-lucide="history"></i></div>
+                            <h4 class="font-bold text-slate-800 text-sm">History</h4>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Featured Simulation -->
+                <section class="bg-[#FFF9E5] rounded-[2.5rem] p-8 flex items-center justify-between border border-orange-100/50 group">
+                    <div class="flex gap-6 items-center">
+                        <div class="w-20 h-20 bg-white rounded-3xl flex items-center justify-center text-4xl shadow-sm group-hover:rotate-6 transition-transform">🧠</div>
+                        <div>
+                            <h3 class="text-xl font-black text-slate-800">The Human Mind</h3>
+                            <p class="text-slate-600 text-xs mt-1">Advanced cognitive research simulation.</p>
+                        </div>
+                    </div>
+                    <button onclick="startSimulation(1)" class="bg-slate-900 text-white p-4 rounded-2xl hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+                        <i data-lucide="play" class="w-6 h-6 fill-white"></i>
+                    </button>
+                </section>
+            </div>
+
+            <!-- Right Column: Leaderboard & Challenges -->
+            <div class="space-y-8">
+                <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
+                    <h3 class="font-bold mb-6">Top Students</h3>
+                    <div class="space-y-4">
+                        ${['Jack', 'Brody', 'Timothy'].map((name, i) => `
+                            <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50">
+                                <div class="flex items-center gap-3">
+                                    <span class="font-bold text-slate-400 text-xs">#${i+1}</span>
+                                    <div class="w-8 h-8 rounded-full bg-white overflow-hidden shadow-sm">
+                                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" />
+                                    </div>
+                                    <span class="font-bold text-slate-700 text-xs">${name}</span>
+                                </div>
+                                <div class="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-lg">
+                                    <i data-lucide="gem" class="w-2 h-2 text-blue-500"></i>
+                                    <span class="text-[10px] font-black">48K</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
+                     <h3 class="font-bold mb-6">Daily Quests</h3>
+                     <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-orange-500 text-white flex items-center justify-center"><i data-lucide="flask-conical" class="w-4 h-4"></i></div>
+                            <div class="flex-1"><h4 class="text-xs font-bold">Lab Master</h4><div class="h-1 w-full bg-slate-100 mt-1 rounded-full"><div class="h-full bg-orange-500 w-1/2 rounded-full"></div></div></div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center"><i data-lucide="target" class="w-4 h-4"></i></div>
+                            <div class="flex-1"><h4 class="text-xs font-bold">Deep Focus</h4><div class="h-1 w-full bg-slate-100 mt-1 rounded-full"><div class="h-full bg-blue-500 w-1/3 rounded-full"></div></div></div>
+                        </div>
+                     </div>
+                </div>
+            </div>
         </div>
     `;
 }
 
-// =====================
-// SIMULATION LIST VIEW
-// =====================
 function renderSims(container) {
-    const filtered = state.sims.filter(sim => {
+    const filtered = simulations.filter(sim => {
         const matchesCat = state.selectedCategory === 'all' || sim.category === state.selectedCategory;
         const matchesSearch = sim.title.toLowerCase().includes(state.searchQuery);
         return matchesCat && matchesSearch;
     });
 
-    container.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            ${filtered.map(sim => `
-                <div class="bg-white p-6 rounded-2xl border">
-                    <div class="text-4xl mb-3">${sim.image}</div>
-                    <h3 class="font-bold mb-2">${sim.title}</h3>
-                    <button onclick="startSimulation(${sim.id})"
-                        class="mt-3 w-full bg-slate-900 text-white py-2 rounded-xl text-sm">
-                        Start Laboratory
-                    </button>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
+    const categoriesList = [
+        { id: 'all', name: 'All' },
+        { id: 'chemistry', name: 'Chemistry' },
+        { id: 'biology', name: 'Biology' },
+        { id: 'physics', name: 'Physics' },
+        { id: 'history', name: 'History' }
+    ];
 
-// =====================
-// CHALLENGES VIEW
-// =====================
-function renderChallenges(container) {
     container.innerHTML = `
-        <h1 class="text-2xl font-bold mb-4">Challenges</h1>
-        ${state.challenges.map(c => `
-            <div class="bg-white p-4 rounded-xl border mb-3">
-                <div class="flex justify-between">
-                    <span>${c.title}</span>
-                    <span>${c.progress}/${c.total}</span>
+        <div class="space-y-8">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-800">Simulations</h1>
+                    <p class="text-slate-500 text-sm mt-1">Explore interactive laboratories.</p>
+                </div>
+                <div class="flex gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100">
+                    ${categoriesList.map(cat => `
+                        <button onclick="filterCategory('${cat.id}')" class="px-4 py-2 rounded-xl text-[10px] font-bold transition-all ${state.selectedCategory === cat.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}">
+                            ${cat.name}
+                        </button>
+                    `).join('')}
                 </div>
             </div>
-        `).join('')}
-    `;
-}
 
-// =====================
-// STORE VIEW
-// =====================
-function renderStore(container) {
-    container.innerHTML = `
-        <h1 class="text-2xl font-bold mb-4">Store</h1>
-        <div class="grid grid-cols-3 gap-4">
-            ${shopItems.map(item => `
-                <div class="bg-white p-4 rounded-xl border text-center">
-                    <h3>${item.title}</h3>
-                    <button onclick="buyItem('${item.id}')"
-                        class="mt-2 bg-green-600 text-white px-3 py-1 rounded">
-                        ${item.price} coins
-                    </button>
-                </div>
-            `).join('')}
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                ${filtered.map(sim => `
+                    <div class="bg-white rounded-[2rem] p-6 border border-slate-100 transition-all sim-card ${sim.status === 'Locked' ? 'opacity-60 grayscale cursor-not-allowed' : 'cursor-pointer'}">
+                        <div class="flex justify-between items-start mb-6">
+                            <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-3xl border border-slate-100 shadow-sm">${sim.image}</div>
+                            <div class="text-right">
+                                <span class="text-[9px] font-black px-2 py-1 rounded-full uppercase ${sim.status === 'Locked' ? 'bg-slate-100 text-slate-500' : 'bg-green-100 text-green-600'}">${sim.status}</span>
+                                <div class="text-[9px] font-bold text-slate-400 mt-1">${sim.difficulty}</div>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-slate-800">${sim.title}</h3>
+                        <p class="text-slate-500 text-[11px] mt-2 mb-6 line-clamp-2">${sim.description}</p>
+                        <div class="space-y-4">
+                            <div class="flex justify-between text-[10px] font-bold">
+                                <span class="text-slate-400 uppercase tracking-widest">Progress</span>
+                                <span>${sim.progress}%</span>
+                            </div>
+                            <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-blue-500 transition-all duration-1000" style="width: ${sim.progress}%"></div>
+                            </div>
+                            <div class="flex justify-between items-center pt-2">
+                                <div class="flex items-center gap-1 text-blue-600 font-black text-xs">
+                                    <i data-lucide="gem" class="w-3 h-3"></i> +${sim.reward}
+                                </div>
+                                <button onclick="startSimulation(${sim.id})" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-slate-800 flex items-center gap-1">
+                                    ${sim.progress > 0 ? 'Resume' : 'Start'} <i data-lucide="play" class="w-3 h-3 fill-white"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
         </div>
     `;
 }
 
-// =====================
-// PROFILE VIEW
-// =====================
+function renderChallenges(container) {
+    container.innerHTML = `
+        <div class="max-w-4xl mx-auto space-y-8">
+            <h1 class="text-3xl font-black text-slate-800">Challenges</h1>
+            <div class="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 space-y-12">
+                <div class="space-y-4">
+                    <div class="flex justify-between">
+                        <h3 class="font-bold flex items-center gap-2"><i data-lucide="target" class="text-blue-500"></i> Weekly Simulation Goal</h3>
+                        <span class="font-black text-blue-600">+500 Gems</span>
+                    </div>
+                    <div class="h-4 w-full bg-slate-100 rounded-full overflow-hidden p-1 border border-slate-200">
+                        <div class="h-full bg-blue-500 rounded-full w-3/4"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] font-bold text-slate-400">
+                        <span>75% COMPLETED</span>
+                        <span>3 DAYS LEFT</span>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex justify-between">
+                        <h3 class="font-bold flex items-center gap-2"><i data-lucide="award" class="text-orange-500"></i> Perfectionist</h3>
+                        <span class="font-black text-blue-600">+200 Gems</span>
+                    </div>
+                    <div class="h-4 w-full bg-slate-100 rounded-full overflow-hidden p-1 border border-slate-200">
+                        <div class="h-full bg-orange-500 rounded-full w-1/4"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] font-bold text-slate-400">
+                        <span>25% COMPLETED</span>
+                        <span>NO TIME LIMIT</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function renderProfile(container) {
     container.innerHTML = `
-        <div class="text-center">
-            <img class="mx-auto w-24 h-24 rounded-full"
-                src="https://api.dicebear.com/7.x/bottts/svg?seed=${state.user.seed}">
-            <h2 class="text-xl font-bold mt-3">${state.user.name}</h2>
+        <div class="max-w-3xl mx-auto">
+            <div class="bg-white rounded-[3rem] p-12 text-center shadow-sm border border-slate-100">
+                <div class="relative w-32 h-32 mx-auto mb-6">
+                    <div class="w-full h-full rounded-full border-8 border-slate-50 overflow-hidden shadow-xl">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Felix" />
+                    </div>
+                    <div class="absolute bottom-1 right-1 bg-blue-600 text-white p-2 rounded-full border-4 border-white shadow-lg">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <h2 class="text-2xl font-black text-slate-800">Felix Scientist</h2>
+                <p class="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-2">Level 24 Master</p>
+                
+                <div class="grid grid-cols-3 gap-8 mt-12 w-full pt-12 border-t border-slate-50">
+                    <div>
+                        <div class="text-xl font-black text-slate-800">1,240</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase">Points</div>
+                    </div>
+                    <div>
+                        <div class="text-xl font-black text-slate-800">42</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase">Sims</div>
+                    </div>
+                    <div>
+                        <div class="text-xl font-black text-slate-800">#12</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase">Rank</div>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
-}
+} 
