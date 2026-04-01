@@ -28,10 +28,10 @@ const state = {
         { id: 'c3', title: "Micro-Explorer", type: "Legendary", progress: 12, total: 20, reward: 1000, badge: 'microscope', claimed: false, icon: "microscope", color: "green" }
     ],
     sims: [
-        { id: 1, title: "The Human Mind", image: "🧠", status: "Unlocked", progress: 65, difficulty: "Advanced", category: "biology" },
+        { id: 1, title: "The Human Mind", image: "🧠", status: "Unlocked", progress: 65, difficulty: "Advanced", category: "IoT" },
         { id: 2, title: "Molecular Fusion", image: "🧪", status: "In Progress", progress: 42, difficulty: "Intermediate", category: "chemistry" },
         { id: 3, title: "Acid-Base Titration", image: "⚗️", status: "Unlocked", progress: 0, difficulty: "Beginner", category: "chemistry" },
-        { id: 4, title: "Microscope Lab", image: "🔬", status: "Unlocked", progress: 15, difficulty: "Intermediate", category: "biology" },
+        { id: 4, title: "Microscope Lab", image: "🔬", status: "Unlocked", progress: 15, difficulty: "Intermediate", category: "IoT" },
         { id: 5, title: "Circuit Builder", image: "🔋", status: "Unlocked", progress: 85, difficulty: "Intermediate", category: "physics" },
         { id: 6, title: "Periodic Table Quest", image: "📔", status: "Unlocked", progress: 10, difficulty: "Beginner", category: "chemistry" }
     ],
@@ -141,7 +141,7 @@ function startSimulation(id) {
     else if (sim.category === "physics") {
         window.location.href = "physics.html";
     } 
-    else if (sim.category === "biology") {
+    else if (sim.category === "IoT") {
         window.location.href = "iot.html";
     } 
     else {
@@ -199,9 +199,9 @@ function renderDashboard(container) {
                             <div class="w-14 h-14 bg-purple-100 text-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform shadow-inner"><i data-lucide="history"></i></div>
                             <h4 class="font-bold text-slate-800 text-sm">History</h4>
                         </div>
-                        <div onclick="filterCategory('biology')" class="category-card bg-white p-5 rounded-[2rem] border border-slate-100 text-center cursor-pointer transition-all group">
+                        <div onclick="filterCategory('IoT')" class="category-card bg-white p-5 rounded-[2rem] border border-slate-100 text-center cursor-pointer transition-all group">
                             <div class="w-14 h-14 bg-green-100 text-green-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform shadow-inner"><i data-lucide="activity"></i></div>
-                            <h4 class="font-bold text-slate-800 text-sm">Biology</h4>
+                            <h4 class="font-bold text-slate-800 text-sm">IoT</h4>
                         </div>
                     </div>
                 </section>
@@ -327,7 +327,7 @@ function renderSims(container) {
             <div class="flex justify-between items-end">
                 <div><h1 class="text-3xl font-black text-slate-800 tracking-tight">Laboratory Catalog</h1><p class="text-slate-500 mt-1">Browse interactive simulations by category.</p></div>
                 <div class="flex gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100">
-                    ${['all', 'chemistry', 'physics', 'history', 'biology'].map(cat => `
+                    ${['all', 'chemistry', 'physics', 'history', 'IoT'].map(cat => `
                         <button onclick="filterCategory('${cat}')" class="px-5 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${state.selectedCategory === cat ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}">${cat.toUpperCase()}</button>
                     `).join('')}
                 </div>
