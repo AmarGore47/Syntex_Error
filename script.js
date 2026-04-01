@@ -142,10 +142,10 @@ function startSimulation(id) {
         window.location.href = "physics.html";
     } 
     else if (sim.category === "biology") {
-        window.location.href = "biology.html";
+        window.location.href = "iot.html";
     } 
     else {
-        window.location.href = "simulation.html";
+        window.location.href = "iot.html";
     }
 }
 function exitSimulation() {
