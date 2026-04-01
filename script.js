@@ -132,10 +132,10 @@ function buyItem(id) {
 }
 
 function startSimulation(id) {
-    const sim = simulations.find(s => s.id === id);
-    if (sim.status === 'Locked') return;
+    const sim = state.sims.find(s => s.id === id);
+    if (!sim || sim.status === 'Locked') return;
 
-    // Open different pages based on simulation category
+    // Route to different simulation pages
     if (sim.category === "chemistry") {
         window.location.href = "chemistry.html";
     } 
@@ -146,7 +146,6 @@ function startSimulation(id) {
         window.location.href = "biology.html";
     } 
     else {
-        // fallback page
         window.location.href = "simulation.html";
     }
 }
