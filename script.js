@@ -53,7 +53,7 @@ function startSimulation(id) {
     if (sim.status === 'Locked') return;
 
     // Open secondary HTML file
-    window.location.href = "second.html";
+    window.location.href = "simulation.html";
 }
 function exitSimulation() {
     document.getElementById('sim-overlay').classList.add('hidden');
