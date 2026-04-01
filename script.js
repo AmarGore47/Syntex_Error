@@ -1,4 +1,3 @@
-// DATA
 const state = {
     activeTab: 'dashboard',
     selectedCategory: 'all',
@@ -92,7 +91,6 @@ function openProfileModal() {
     lucide.createIcons();
 }
 
-<<<<<<< HEAD
 function closeProfileModal() {
     document.getElementById('profile-modal').classList.add('hidden');
 }
@@ -112,7 +110,7 @@ function saveProfile() {
 
 function claimReward(id) {
     const c = state.challenges.find(ch => ch.id === id);
-    if (c && c.progress >= c.total && !c.claimed) {
+    if (c.progress >= c.total && !c.claimed) {
         c.claimed = true;
         state.user.gems += c.reward;
         if (c.badge && !state.user.badges.includes(c.badge)) {
@@ -125,7 +123,7 @@ function claimReward(id) {
 
 function buyItem(id) {
     const item = shopItems.find(i => i.id === id);
-    if (item && state.user.coins >= item.price) {
+    if (state.user.coins >= item.price) {
         state.user.coins -= item.price;
         state.user.inventory.push(id);
         updateHeader();
@@ -134,23 +132,13 @@ function buyItem(id) {
 }
 
 function startSimulation(id) {
-    const sim = simulations.find(s => s.id === id);
+    const sim = state.sims.find(s => s.id === id);
     if (sim.status === 'Locked') return;
-
-    // Open different pages based on simulation category
-    if (sim.category === "chemistry") {
-        window.location.href = "chemistry.html";
-    } 
-    else if (sim.category === "physics") {
-        window.location.href = "physics.html";
-    } 
-    else if (sim.category === "biology") {
-        window.location.href = "biology.html";
-    } 
-    else {
-        // fallback page
-        window.location.href = "simulation.html";
-    }
+    document.getElementById('active-sim-title').innerText = sim.title;
+    document.getElementById('active-sim-emoji').innerText = sim.image;
+    document.getElementById('active-sim-progress-bar').style.width = `${sim.progress}%`;
+    document.getElementById('sim-overlay').classList.remove('hidden');
+    lucide.createIcons();
 }
 function exitSimulation() {
     document.getElementById('sim-overlay').classList.add('hidden');
@@ -429,4 +417,4 @@ function renderProfile(container) {
             </div>
         </div>
     `;
-} 
+}
