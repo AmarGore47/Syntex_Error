@@ -132,13 +132,23 @@ function buyItem(id) {
 }
 
 function startSimulation(id) {
-    const sim = state.sims.find(s => s.id === id);
+    const sim = simulations.find(s => s.id === id);
     if (sim.status === 'Locked') return;
-    document.getElementById('active-sim-title').innerText = sim.title;
-    document.getElementById('active-sim-emoji').innerText = sim.image;
-    document.getElementById('active-sim-progress-bar').style.width = `${sim.progress}%`;
-    document.getElementById('sim-overlay').classList.remove('hidden');
-    lucide.createIcons();
+
+    // Open different pages based on simulation category
+    if (sim.category === "chemistry") {
+        window.location.href = "chemistry.html";
+    } 
+    else if (sim.category === "physics") {
+        window.location.href = "physics.html";
+    } 
+    else if (sim.category === "biology") {
+        window.location.href = "biology.html";
+    } 
+    else {
+        // fallback page
+        window.location.href = "simulation.html";
+    }
 }
 function exitSimulation() {
     document.getElementById('sim-overlay').classList.add('hidden');
@@ -418,4 +428,3 @@ function renderProfile(container) {
         </div>
     `;
 }
- 
