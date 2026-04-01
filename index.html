@@ -17,7 +17,7 @@
             <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
                 <i data-lucide="flask-conical"></i>
             </div>
-            <span class="hidden lg:block font-extrabold text-xl tracking-tight text-blue-900">LabSim AI</span>
+            <span class="hidden lg:block font-extrabold text-xl tracking-tight">LabSim AI</span>
         </div>
 
         <nav class="flex-1 px-4 space-y-2 mt-4" id="main-nav">
@@ -44,7 +44,7 @@
         </nav>
 
         <div class="p-4 border-t border-slate-100">
-            <button onclick="showToast('Settings opened')" class="text-slate-500 hover:bg-slate-50 w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all group text-left">
+            <button class="text-slate-500 hover:bg-slate-50 w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all group text-left">
                 <i data-lucide="settings" class="w-5 h-5"></i>
                 <span class="hidden lg:block font-bold text-sm">Settings</span>
             </button>
@@ -60,15 +60,13 @@
             </div>
             <div class="flex items-center gap-4">
                 <div class="flex items-center gap-2 pr-4 border-r border-slate-100">
-                    <div class="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 group relative cursor-help">
+                    <div class="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
                         <i data-lucide="gem" class="text-blue-500 w-4 h-4"></i>
                         <span class="font-bold text-blue-700 text-sm" id="header-gems">144</span>
-                        <div class="hidden group-hover:block absolute top-10 right-0 bg-slate-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-50">Gems for rewards</div>
                     </div>
-                    <div class="flex items-center gap-2 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100 group relative cursor-help">
+                    <div class="flex items-center gap-2 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100">
                         <i data-lucide="coins" class="text-orange-500 w-4 h-4"></i>
                         <span class="font-bold text-orange-700 text-sm" id="header-coins">2,321</span>
-                        <div class="hidden group-hover:block absolute top-10 right-0 bg-slate-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-50">Coins for store</div>
                     </div>
                 </div>
                 <div onclick="switchTab('profile')" class="flex items-center gap-3 pl-2 cursor-pointer hover:opacity-80 transition-opacity">
@@ -84,7 +82,9 @@
         </header>
 
         <!-- VIEW CONTAINER -->
-        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar" id="view-container"></div>
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar" id="view-container">
+            <!-- Content will be rendered here -->
+        </div>
 
         <!-- SIMULATION OVERLAY -->
         <div id="sim-overlay" class="hidden absolute inset-0 z-50 bg-[#F0F4F8] flex flex-col">
@@ -93,18 +93,22 @@
                     <i data-lucide="arrow-left" class="w-5 h-5"></i>
                     <span>Exit Lab</span>
                 </button>
+                <button onclick="openIOTLab()" 
+                class="bg-blue-600 text-white px-6 py-3 rounded-xl">
+                Start IoT Experiment
+            </button>
                 <div class="flex items-center gap-4">
                     <span class="font-black text-slate-800" id="active-sim-title">Simulation</span>
                     <div class="h-2 w-48 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
                         <div id="active-sim-progress-bar" class="h-full bg-blue-600 w-0 transition-all duration-1000"></div>
                     </div>
                 </div>
-                <button onclick="showToast('Progress Saved')" class="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold px-6 text-xs shadow-lg shadow-blue-100 transition-all active:scale-95">Save Data</button>
+                <button class="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold px-6 text-xs shadow-lg shadow-blue-100 transition-all active:scale-95">Save Data</button>
             </header>
             <div class="flex-1 p-8 flex items-center justify-center">
                 <div class="w-full h-full bg-white rounded-[3rem] border border-slate-100 flex flex-col items-center justify-center shadow-xl relative overflow-hidden">
                     <span id="active-sim-emoji" class="text-9xl mb-8 animate-bounce">🧪</span>
-                    <h2 class="text-4xl font-black mb-4 text-slate-800">Experiment Active</h2>
+                    <h2 class="text-4xl font-black mb-4 text-slate-800">Experiment Running</h2>
                     <div class="mt-12 flex gap-4">
                         <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 text-center w-40">
                             <i data-lucide="clock" class="mx-auto mb-2 text-blue-500"></i>
@@ -115,75 +119,20 @@
                 </div>
             </div>
         </div>
-
-        <!-- AI CHATBOT -->
-        <div class="fixed bottom-8 right-8 z-[60] flex flex-col items-end gap-4">
-            <div id="chat-window" class="chat-window w-[380px] h-[550px] bg-white rounded-[3rem] shadow-2xl border border-slate-100 flex flex-col overflow-hidden">
-                <div class="bg-blue-600 p-8 flex flex-col text-white shrink-0 relative overflow-hidden">
-                    <div class="absolute inset-0 podium-aura pointer-events-none opacity-40"></div>
-                    <div class="flex justify-between items-start relative z-10">
-                        <div class="flex items-center gap-4">
-                            <div class="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/40 shadow-xl bg-blue-500">
-                                <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=200&h=200" class="w-full h-full object-cover">
-                            </div>
-                            <div>
-                                <h4 class="font-black text-lg leading-tight text-white">Prof. Sarah AI</h4>
-                                <p class="text-[10px] font-bold text-blue-100 uppercase tracking-widest mt-1 flex items-center gap-1.5">
-                                    <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> Virtual Mentor
-                                </p>
-                            </div>
-                        </div>
-                        <button onclick="toggleChat()" class="p-2 hover:bg-white/10 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
-                    </div>
-                </div>
-                <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50/50">
-                    <div class="flex items-start max-w-[90%]">
-                        <div class="bg-white p-4 text-xs font-bold leading-relaxed rounded-2xl rounded-bl-none border border-slate-100 shadow-sm text-slate-700">
-                            Hello Felix! I'm here to help you master your lab sessions. Any scientific doubts? 👋
-                        </div>
-                    </div>
-                </div>
-                <div class="p-6 bg-white border-t border-slate-100">
-                    <div class="relative flex items-center">
-                        <input id="chat-input" type="text" placeholder="Ask your doubt..." class="w-full bg-slate-50 rounded-2xl py-4 pl-5 pr-14 border-none focus:ring-2 focus:ring-blue-100 outline-none text-sm font-bold text-slate-700">
-                        <button id="chat-send-btn" onclick="sendMessage()" class="absolute right-2 p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg active:scale-90"><i data-lucide="send" class="w-5 h-5"></i></button>
-                    </div>
-                </div>
-            </div>
-            <button onclick="toggleChat()" class="w-16 h-16 rounded-full shadow-2xl shadow-blue-200 border-4 border-white overflow-hidden hover:scale-110 active:scale-95 transition-all relative z-10">
-                <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=200&h=200" class="w-full h-full object-cover">
-                <span class="absolute top-0 right-0 w-4 h-4 bg-blue-600 border-2 border-white rounded-full"></span>
-            </button>
-        </div>
     </main>
-
-    <!-- AI Briefing Modal -->
-    <div id="ai-modal" class="hidden fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-lg rounded-[3rem] shadow-2xl p-10 animate-pop border border-slate-100">
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><i data-lucide="sparkles"></i></div>
-                    <h3 class="text-2xl font-black text-slate-800 tracking-tight">Lab AI Briefing</h3>
-                </div>
-                <button onclick="closeAiModal()" class="p-2 hover:bg-slate-50 rounded-full text-slate-400"><i data-lucide="x"></i></button>
-            </div>
-            <div id="ai-content" class="text-slate-600 leading-relaxed text-sm font-medium space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2"></div>
-            <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end">
-                <button onclick="closeAiModal()" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">Got it, Prof!</button>
-            </div>
-        </div>
-    </div>
 
     <!-- EDIT PROFILE MODAL -->
     <div id="profile-modal" class="hidden fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-[3rem] shadow-2xl p-10 animate-pop border border-slate-100">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-2xl font-black text-slate-800 tracking-tight">Edit Profile</h3>
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-pop border border-slate-100">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-black text-slate-800">Edit Profile</h3>
                 <button onclick="closeProfileModal()" class="p-2 hover:bg-slate-50 rounded-full text-slate-400"><i data-lucide="x"></i></button>
             </div>
-            <div class="space-y-8">
+            <div class="space-y-6">
                 <div class="flex flex-col items-center gap-4">
-                    <div class="w-24 h-24 rounded-full border-4 border-blue-50 overflow-hidden shadow-lg"><img id="modal-avatar-preview" src="" alt="preview"></div>
+                    <div class="w-24 h-24 rounded-full border-4 border-blue-50 overflow-hidden shadow-md">
+                        <img id="modal-avatar-preview" src="" alt="preview">
+                    </div>
                     <div class="text-center w-full">
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Avatar Seed</label>
                         <input type="text" id="modal-seed-input" oninput="updateAvatarPreview()" class="block w-full bg-slate-50 border-none rounded-xl px-4 py-2 mt-1 text-center font-bold text-sm focus:ring-2 focus:ring-blue-100 outline-none">
@@ -191,27 +140,16 @@
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Display Name</label>
-                    <input type="text" id="modal-name-input" class="block w-full bg-slate-50 border-none rounded-xl px-4 py-4 mt-1 font-bold text-sm focus:ring-2 focus:ring-blue-100 outline-none">
+                    <input type="text" id="modal-name-input" class="block w-full bg-slate-50 border-none rounded-xl px-4 py-3 mt-1 font-bold text-sm focus:ring-2 focus:ring-blue-100 outline-none">
                 </div>
-                <div class="pt-4 flex gap-4">
-                    <button onclick="closeProfileModal()" class="flex-1 py-4 bg-slate-50 text-slate-500 font-bold rounded-2xl hover:bg-slate-100 transition-colors">Cancel</button>
-                    <button onclick="saveProfile()" class="flex-1 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all active:scale-95">Update Now</button>
+                <div class="pt-4 flex gap-3">
+                    <button onclick="closeProfileModal()" class="flex-1 py-3 bg-slate-50 text-slate-500 font-bold rounded-2xl hover:bg-slate-100 transition-colors">Cancel</button>
+                    <button onclick="saveProfile()" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all active:scale-95">Save Changes</button>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- TOAST NOTIFICATION -->
-    <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 bg-slate-800 text-white rounded-full font-bold text-sm shadow-2xl opacity-0 transition-all pointer-events-none"></div>
 
     <script src="script.js"></script>
 </body>
 </html>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="script.js"></script>
-</body>
-</html> 
