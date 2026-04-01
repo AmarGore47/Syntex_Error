@@ -92,6 +92,7 @@ function openProfileModal() {
     lucide.createIcons();
 }
 
+<<<<<<< HEAD
 function closeProfileModal() {
     document.getElementById('profile-modal').classList.add('hidden');
 }
@@ -140,8 +141,11 @@ function startSimulation(id) {
     document.getElementById('active-sim-progress-bar').style.width = `${sim.progress}%`;
     document.getElementById('sim-overlay').classList.remove('hidden');
     lucide.createIcons();
+=======
+    // Open secondary HTML file
+    window.location.href = "simulation.html";
+>>>>>>> 8189c35337064428d19690ec047e230dd8be14f0
 }
-
 function exitSimulation() {
     document.getElementById('sim-overlay').classList.add('hidden');
 }

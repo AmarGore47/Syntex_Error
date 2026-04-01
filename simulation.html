@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR IoT Engineering Lab - Standard Edition</title>
+    <!-- Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .ar-viewport-container {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid #e2e8f0;
+        }
+
+        .scanline {
+            background: repeating-linear-gradient(0deg, transparent 0, rgba(0, 0, 0, 0.02) 1px, transparent 2px);
+        }
+
+        .pinch-meter-fill {
+            transition: height 75ms linear;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px border-blue-500/20;
+            border-top: 4px solid #2563eb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-dot-active {
+            box-shadow: 0 0 8px #10b981;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen p-4 flex gap-4 bg-slate-50 text-slate-900">
+
+    <!-- Loading Overlay -->
+    <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white">
+        <div class="spinner mb-4"></div>
+        <p class="text-blue-600 tracking-[0.3em] text-xs font-bold uppercase">Optimizing AR Response...</p>
+    </div>
+
+    <!-- Main AR Viewport (Left) -->
+    <div class="relative flex-[2.5] bg-white rounded-2xl border border-slate-200 overflow-hidden ar-viewport-container">
+        <video id="webcam-video" class="absolute opacity-0 w-px h-px pointer-events-none" playsinline muted autoplay></video>
+        <canvas id="ar-canvas" class="absolute inset-0 w-full h-full z-10"></canvas>
+        <div class="absolute inset-0 pointer-events-none z-20 scanline"></div>
+        
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 bg-white/90 backdrop-blur-md border border-slate-300 p-4 rounded-xl flex items-center gap-6 min-w-[380px] shadow-xl">
+            <div class="w-1.5 h-10 bg-slate-200 relative rounded-full overflow-hidden">
+                <div id="pinch-meter-fill" class="absolute bottom-0 w-full bg-emerald-500 pinch-meter-fill" style="height: 0%"></div>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                    Status: <span id="tracking-status-text" class="text-orange-500 font-bold">OFFLINE</span>
+                </span>
+                <span id="phase-text" class="font-bold text-slate-800 uppercase tracking-wider text-sm">Assemble Realistic Components</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Controls (Right) -->
+    <div class="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+        
+        <!-- Workbench Card -->
+        <div class="glass-card rounded-xl p-5 shadow-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xs font-bold text-blue-600 flex items-center gap-2 uppercase tracking-widest">
+                    <i data-lucide="cpu" class="w-4 h-4"></i> Workbench
+                </h3>
+                <span id="assembly-progress" class="text-xs text-blue-500 font-mono font-bold">0%</span>
+            </div>
+            <div class="space-y-2 mb-5" id="component-list">
+                <!-- Dynamic component items -->
+            </div>
+            <div class="flex flex-col gap-3">
+                <button id="launch-btn" disabled class="w-full py-3 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold uppercase transition-all shadow-md flex items-center justify-center gap-2">
+                    <i data-lucide="zap" class="w-4 h-4"></i> Launch Experiment
+                </button>
+                <button id="reset-btn" class="w-full py-3 bg-orange-50 border border-orange-200 text-orange-600 rounded-lg text-xs font-bold uppercase hover:bg-orange-100 transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset Lab
+                </button>
+            </div>
+        </div>
+
+        <!-- Telemetry Card -->
+        <div id="telemetry-card" class="glass-card rounded-xl p-5 flex-1 flex flex-col shadow-lg transition-opacity opacity-30">
+            <h3 class="text-xs font-bold text-emerald-600 flex items-center gap-2 uppercase tracking-widest mb-4">
+                <i data-lucide="activity" class="w-4 h-4"></i> Telemetry
+            </h3>
+            <div class="flex-1 flex flex-col gap-4">
+                <div id="temp-box" class="bg-slate-50 border border-slate-200 rounded-lg p-5 text-center transition-colors shadow-inner">
+                    <div id="temp-display" class="text-3xl font-mono mb-1 text-emerald-600">25.0°C</div>
+                    <div class="text-[10px] text-slate-500 uppercase font-semibold">Thermal Probe Alpha</div>
+                </div>
+                <div id="graph-container" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 flex items-end gap-[1px] shadow-inner overflow-hidden">
+                    <!-- Graph bars -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Diagnostics -->
+        <div class="glass-card rounded-xl p-5 h-[150px] flex flex-col shadow-lg">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-xs font-bold text-blue-600 flex items-center gap-2 uppercase tracking-widest">
+                    <i data-lucide="terminal" class="w-4 h-4"></i> Diagnostics
+                </h3>
+                <button id="audio-toggle" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i data-lucide="volume-x" id="audio-icon" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div id="log-monitor" class="flex-1 bg-slate-50 rounded border border-slate-200 p-2 font-mono text-[9px] overflow-y-auto shadow-inner">
+                <!-- Logs will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Constants & Config ---
+        const CONFIG = {
+            PINCH_THRESHOLD: 70,
+            SNAP_DISTANCE: 85,
+            LERP_AMOUNT: 0.75,
+            ROOM_TEMP: 25.0,
+            HISTORY_SIZE: 50,
+            HIGH_TEMP_THRESHOLD: 50.0
+        };
+
+        // --- State Object ---
+        const state = {
+            isLoaded: false,
+            mode: 'ASSEMBLY', // ASSEMBLY | SIMULATION
+            trackingStatus: 'OFFLINE',
+            pinchStrength: 0,
+            temperature: CONFIG.ROOM_TEMP,
+            tempHistory: Array(CONFIG.HISTORY_SIZE).fill(CONFIG.ROOM_TEMP),
+            smoothCursor: { x: 0, y: 0 },
+            grabbedId: null,
+            hoverId: null,
+            audioEnabled: false,
+            width: 0,
+            height: 0,
+            components: [
+                { id: 'sensor', label: 'LM35', x: 150, y: 120, tx: 0, ty: 0, snapped: false, color: '#333333' },
+                { id: 'led_red', label: 'LED_RED', x: 150, y: 220, tx: 0, ty: 0, snapped: false, color: '#ff4d4d' },
+                { id: 'led_green', label: 'LED_GRN', x: 150, y: 320, tx: 0, ty: 0, snapped: false, color: '#22c55e' }
+            ],
+            lastResults: null
+        };
+
+        // --- Elements ---
+        const video = document.getElementById('webcam-video');
+        const canvas = document.getElementById('ar-canvas');
+        const ctx = canvas.getContext('2d');
+        const loadingScreen = document.getElementById('loading-screen');
+        const trackingText = document.getElementById('tracking-status-text');
+        const phaseText = document.getElementById('phase-text');
+        const pinchFill = document.getElementById('pinch-meter-fill');
+        const compList = document.getElementById('component-list');
+        const progressText = document.getElementById('assembly-progress');
+        const launchBtn = document.getElementById('launch-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const tempDisplay = document.getElementById('temp-display');
+        const logMonitor = document.getElementById('log-monitor');
+        const audioToggle = document.getElementById('audio-toggle');
+        const graphContainer = document.getElementById('graph-container');
+
+        let audioCtx = null;
+
+        // --- Utilities ---
+        function addLog(text, type = 'default') {
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type === 'info' ? 'text-blue-700 font-semibold' : type === 'error' ? 'text-red-600' : 'text-slate-600';
+            logEntry.innerHTML = `[${time}] ${text}`;
+            logMonitor.prepend(logEntry);
+        }
+
+        function playTone(freq, duration) {
+            if (!state.audioEnabled || !audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.value = freq;
+                gain.gain.setTargetAtTime(0.04, audioCtx.currentTime, 0.01);
+                gain.gain.setTargetAtTime(0, audioCtx.currentTime + duration, 0.02);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration + 0.1);
+            } catch (e) {}
+        }
+
+        // --- Realistic Drawing ---
+        function drawLM35(x, y, scale = 1) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            const bodyGrad = ctx.createLinearGradient(-15, 0, 15, 0);
+            bodyGrad.addColorStop(0, '#1a1a1a');
+            bodyGrad.addColorStop(0.5, '#444444');
+            bodyGrad.addColorStop(1, '#1a1a1a');
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.moveTo(-15, -15); ctx.lineTo(15, -15); ctx.lineTo(15, 5); ctx.quadraticCurveTo(0, 20, -15, 5);
+            ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.stroke();
+            ctx.rotate(Math.PI / 2);
+            ctx.fillStyle = '#999'; ctx.font = 'bold 6px Arial'; ctx.textAlign = 'center';
+            ctx.fillText("LM35", 0, 0);
+            ctx.restore();
+        }
+
+        function drawLED(x, y, color, isGlowing, scale = 1) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            if (isGlowing) {
+                const glowSize = 30 + Math.sin(Date.now() / 200) * 10;
+                const glowGrad = ctx.createRadialGradient(0, 0, 5, 0, 0, glowSize);
+                glowGrad.addColorStop(0, color);
+                glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = glowGrad; ctx.beginPath(); ctx.arc(0, 0, glowSize, 0, Math.PI * 2); ctx.fill();
+            }
+            const domeGrad = ctx.createRadialGradient(-5, -5, 2, 0, 0, 15);
+            domeGrad.addColorStop(0, '#ffffff88');
+            domeGrad.addColorStop(0.3, color + 'aa');
+            domeGrad.addColorStop(1, color + 'cc');
+            ctx.fillStyle = domeGrad;
+            ctx.beginPath(); ctx.arc(0, -5, 12, Math.PI, 0); ctx.lineTo(12, 10); ctx.lineTo(-12, 10); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = 'rgba(200, 200, 200, 0.4)'; ctx.fillRect(-6, -2, 4, 8); ctx.fillRect(2, -4, 2, 10);
+            ctx.fillStyle = color; ctx.globalAlpha = 0.8; ctx.fillRect(-14, 10, 28, 3);
+            ctx.restore();
+        }
+
+        function drawArduino(x, y) {
+            const w = 140, h = 180;
+            ctx.save();
+            ctx.translate(x, y);
+            const pcbGrad = ctx.createLinearGradient(0, 0, w, h);
+            pcbGrad.addColorStop(0, '#003153'); pcbGrad.addColorStop(1, '#001a2c');
+            ctx.fillStyle = pcbGrad;
+            ctx.beginPath(); ctx.roundRect(0, 0, w, h, 8); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; ctx.strokeRect(5, 5, w - 10, h - 10);
+            ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = 'bold 8px Courier'; ctx.fillText("ARDUINO UNO", 15, 20);
+            ctx.fillStyle = '#1a1a1a'; ctx.shadowBlur = 5; ctx.shadowColor = 'black'; ctx.fillRect(40, 60, 50, 80); ctx.shadowBlur = 0;
+            ctx.fillStyle = '#888';
+            for(let i=0; i<10; i++) { ctx.fillRect(36, 65 + i*7, 4, 2); ctx.fillRect(90, 65 + i*7, 4, 2); }
+            ctx.fillStyle = '#aaa'; ctx.fillRect(-5, 30, 25, 40);
+            ctx.restore();
+        }
+
+        // --- Render Loop ---
+        function drawLoop() {
+            if (!state.isLoaded) {
+                requestAnimationFrame(drawLoop);
+                return;
+            }
+
+            // Sync dimensions
+            if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+                canvas.width = video.videoWidth || 1280;
+                canvas.height = video.videoHeight || 720;
+                state.width = canvas.width;
+                state.height = canvas.height;
+            }
+
+            ctx.save();
+            ctx.translate(state.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, state.width, state.height);
+            ctx.restore();
+
+            // Breadboard
+            const bX = state.width * 0.7, bY = state.height * 0.1, bW = 360, bH = 580;
+            ctx.fillStyle = '#f8fafc';
+            ctx.shadowBlur = 15; ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.beginPath(); ctx.roundRect(bX, bY, bW, bH, 15); ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Pin Grid
+            ctx.fillStyle = '#cbd5e1';
+            const startX = bX + 80, startY = bY + 40, gap = 18;
+            for (let r = 0; r < 28; r++) {
+                for (let c = 0; c < 5; c++) { ctx.beginPath(); ctx.arc(startX + c * gap, startY + r * gap, 2.5, 0, Math.PI * 2); ctx.fill(); }
+                for (let c = 0; c < 5; c++) { ctx.beginPath(); ctx.arc(startX + (c + 6) * gap, startY + r * gap, 2.5, 0, Math.PI * 2); ctx.fill(); }
+            }
+
+            drawArduino(bX + 200, bY + 360);
+
+            state.components.forEach(c => {
+                if (c.id === 'sensor') { c.tx = startX + 2 * gap; c.ty = startY + 12 * gap; }
+                if (c.id === 'led_red') { c.tx = startX + 2 * gap; c.ty = startY + 18 * gap; }
+                if (c.id === 'led_green') { c.tx = startX + 2 * gap; c.ty = startY + 24 * gap; }
+
+                if (c.snapped) {
+                    ctx.beginPath();
+                    ctx.moveTo(c.tx, c.ty);
+                    ctx.bezierCurveTo(c.tx, c.ty + 50, bX + 200, bY + 450, bX + 200, bY + 460);
+                    ctx.strokeStyle = state.mode === 'SIMULATION' ? 'rgba(0, 100, 255, 0.4)' : 'rgba(0,0,0,0.1)';
+                    ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+                } else {
+                    ctx.beginPath(); ctx.arc(c.tx, c.ty, 35, 0, Math.PI * 2);
+                    ctx.strokeStyle = `${c.color}44`; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+                }
+
+                const isHovered = state.hoverId === c.id || state.grabbedId === c.id;
+                let isGlowing = false;
+                if (state.mode === 'SIMULATION' && c.snapped) {
+                    if (c.id === 'led_red' && state.temperature > CONFIG.HIGH_TEMP_THRESHOLD) isGlowing = true;
+                    if (c.id === 'led_green' && state.temperature <= CONFIG.HIGH_TEMP_THRESHOLD) isGlowing = true;
+                }
+
+                if (c.id === 'sensor') drawLM35(c.x, c.y, isHovered ? 1.2 : 1);
+                else drawLED(c.x, c.y, c.color, isGlowing, isHovered ? 1.2 : 1);
+
+                if (isHovered) {
+                    ctx.strokeStyle = '#020617'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(c.x, c.y, 40, 0, Math.PI * 2); ctx.stroke();
+                }
+            });
+
+            // Tracking Reticle
+            if (state.lastResults && state.lastResults.multiHandLandmarks?.[0]) {
+                const r = 40 * (1 - state.pinchStrength * 0.5);
+                ctx.strokeStyle = state.pinchStrength > 0.7 ? '#10b981' : '#0ea5e9';
+                ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.arc(state.smoothCursor.x, state.smoothCursor.y, r, 0, Math.PI * 2); ctx.stroke();
+            }
+
+            requestAnimationFrame(drawLoop);
+        }
+
+        // --- Interaction Logic ---
+        function onResults(results) {
+            state.lastResults = results;
+            if (results.multiHandLandmarks && results.multiHandLandmarks[0]) {
+                state.trackingStatus = 'LOCKED';
+                trackingText.innerText = 'LOCKED';
+                trackingText.className = 'text-emerald-600 font-bold';
+
+                const landmarks = results.multiHandLandmarks[0];
+                const getX = (val) => (1 - val) * state.width;
+                const getY = (val) => val * state.height;
+                
+                const p1 = { x: getX(landmarks[4].x), y: getY(landmarks[4].y) };
+                const p2 = { x: getX(landmarks[8].x), y: getY(landmarks[8].y) };
+                const dist = Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
+                const targetX = (p1.x + p2.x) / 2;
+                const targetY = (p1.y + p2.y) / 2;
+
+                state.smoothCursor.x += (targetX - state.smoothCursor.x) * CONFIG.LERP_AMOUNT;
+                state.smoothCursor.y += (targetY - state.smoothCursor.y) * CONFIG.LERP_AMOUNT;
+                
+                const strength = Math.max(0, Math.min(1, 1 - (dist / CONFIG.PINCH_THRESHOLD)));
+                state.pinchStrength = strength;
+                pinchFill.style.height = `${strength * 100}%`;
+
+                if (state.mode === 'ASSEMBLY') {
+                    const x = state.smoothCursor.x;
+                    const y = state.smoothCursor.y;
+                    const isPinching = dist < CONFIG.PINCH_THRESHOLD;
+
+                    const hov = state.components.find(c => !c.snapped && Math.hypot(c.x - x, c.y - y) < 100);
+                    state.hoverId = hov ? hov.id : null;
+
+                    if (isPinching) {
+                        if (!state.grabbedId) {
+                            if (hov && strength > 0.4) {
+                                state.grabbedId = hov.id;
+                                playTone(400, 0.05);
+                                addLog(`Grabbed ${hov.label}`);
+                            }
+                        } else {
+                            const comp = state.components.find(c => c.id === state.grabbedId);
+                            if (comp) { comp.x = x; comp.y = y; }
+                        }
+                    } else if (state.grabbedId) {
+                        const comp = state.components.find(c => c.id === state.grabbedId);
+                        if (comp) {
+                            if (Math.hypot(comp.x - comp.tx, comp.y - comp.ty) < CONFIG.SNAP_DISTANCE) {
+                                comp.snapped = true; comp.x = comp.tx; comp.y = comp.ty;
+                                playTone(1000, 0.1);
+                                addLog(`Mounted ${comp.label}`, 'info');
+                                updateWorkbenchUI();
+                            }
+                        }
+                        state.grabbedId = null;
+                    }
+                } else {
+                    // Simulation mode: Check fingers
+                    const isFingerUp = (t, b) => landmarks[t].y < landmarks[b].y;
+                    const activeFingers = [8, 12, 16, 20].filter(i => isFingerUp(i, i - 2)).length;
+                    if (activeFingers === 0) updateTemp(state.temperature - 0.25);
+                    else if (activeFingers >= 4) updateTemp(state.temperature + 0.25);
+                }
+            } else {
+                state.trackingStatus = 'SEARCHING';
+                trackingText.innerText = 'SEARCHING';
+                trackingText.className = 'text-orange-500 font-bold';
+                state.pinchStrength = 0;
+                pinchFill.style.height = '0%';
+            }
+        }
+
+        function updateWorkbenchUI() {
+            const snappedCount = state.components.filter(c => c.snapped).length;
+            progressText.innerText = `${Math.round((snappedCount / 3) * 100)}%`;
+            
+            compList.innerHTML = '';
+            state.components.forEach(c => {
+                const item = document.createElement('div');
+                item.className = `p-2 rounded border flex justify-between items-center text-xs ${c.snapped ? 'border-emerald-500/50 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`;
+                item.innerHTML = `
+                    <span class="font-medium text-slate-700">${c.label} Module</span>
+                    <span class="${c.snapped ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${c.snapped ? 'OK' : 'WAIT'}</span>
+                `;
+                compList.appendChild(item);
+            });
+
+            if (snappedCount >= 3 && state.mode === 'ASSEMBLY') {
+                launchBtn.disabled = false;
+                launchBtn.className = "w-full py-3 bg-blue-600 text-white rounded-lg text-xs font-bold uppercase transition-all shadow-md hover:bg-blue-700 active:scale-[0.98] flex items-center justify-center gap-2";
+            }
+        }
+
+        function updateTemp(newTemp) {
+            state.temperature = Math.max(10, Math.min(90, newTemp));
+            tempDisplay.innerText = `${state.temperature.toFixed(1)}°C`;
+            
+            const isHigh = state.temperature > CONFIG.HIGH_TEMP_THRESHOLD;
+            const tempBox = document.getElementById('temp-box');
+            tempBox.className = `bg-slate-50 border rounded-lg p-5 text-center transition-colors shadow-inner ${isHigh ? 'border-red-200' : 'border-slate-200'}`;
+            tempDisplay.className = `text-3xl font-mono mb-1 ${isHigh ? 'text-red-600' : 'text-emerald-600'}`;
+
+            // Graph record
+            state.tempHistory.push(state.temperature);
+            if (state.tempHistory.length > CONFIG.HISTORY_SIZE) state.tempHistory.shift();
+            renderGraph();
+        }
+
+        function renderGraph() {
+            graphContainer.innerHTML = '';
+            state.tempHistory.forEach(v => {
+                const bar = document.createElement('div');
+                bar.className = `flex-1 ${v > CONFIG.HIGH_TEMP_THRESHOLD ? 'bg-red-500/40' : 'bg-emerald-500/30'}`;
+                bar.style.height = `${(v/100)*100}%`;
+                graphContainer.appendChild(bar);
+            });
+        }
+
+        // --- Event Listeners ---
+        launchBtn.onclick = () => {
+            state.mode = 'SIMULATION';
+            setUiPhase('Simulation Active');
+            document.getElementById('telemetry-card').classList.remove('opacity-30');
+            launchBtn.disabled = true;
+            launchBtn.className = "w-full py-3 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold uppercase transition-all shadow-md flex items-center justify-center gap-2";
+            addLog('Uplink active. Monitoring thermals.', 'info');
+        };
+
+        resetBtn.onclick = () => {
+            state.mode = 'ASSEMBLY';
+            state.components = JSON.parse(JSON.stringify(INITIAL_COMPONENTS));
+            state.temperature = CONFIG.ROOM_TEMP;
+            state.tempHistory = Array(CONFIG.HISTORY_SIZE).fill(CONFIG.ROOM_TEMP);
+            setUiPhase('Assemble Realistic Components');
+            document.getElementById('telemetry-card').classList.add('opacity-30');
+            updateWorkbenchUI();
+            updateTemp(CONFIG.ROOM_TEMP);
+            addLog('Workspace reset. Tracking re-calibrated.', 'info');
+        };
+
+        audioToggle.onclick = () => {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            state.audioEnabled = !state.audioEnabled;
+            const icon = document.getElementById('audio-icon');
+            if (state.audioEnabled) {
+                icon.setAttribute('data-lucide', 'volume-2');
+                addLog('Audio system ON');
+            } else {
+                icon.setAttribute('data-lucide', 'volume-x');
+                addLog('Audio system OFF');
+            }
+            lucide.createIcons();
+        };
+
+        function setUiPhase(text) {
+            phaseText.innerText = text;
+        }
+
+        // --- Init ---
+        async function init() {
+            lucide.createIcons();
+            updateWorkbenchUI();
+            renderGraph();
+
+            const hands = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 0, // Lite model for speed
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onResults);
+
+            const camera = new Camera(video, {
+                onFrame: async () => {
+                    await hands.send({ image: video });
+                },
+                width: 1280,
+                height: 720
+            });
+
+            try {
+                await camera.start();
+                state.isLoaded = true;
+                loadingScreen.style.display = 'none';
+                addLog('Optical stream established.', 'info');
+                requestAnimationFrame(drawLoop);
+            } catch (err) {
+                addLog(`Camera error: ${err.message}`, 'error');
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
