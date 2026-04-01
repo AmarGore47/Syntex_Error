@@ -28,10 +28,10 @@ const state = {
         { id: 'c3', title: "Micro-Explorer", type: "Legendary", progress: 12, total: 20, reward: 1000, badge: 'microscope', claimed: false, icon: "microscope", color: "green" }
     ],
     sims: [
-        { id: 1, title: "The Human Mind", image: "🧠", status: "Unlocked", progress: 65, difficulty: "Advanced", category: "IoT" },
+        { id: 1, title: "Exp 1", image: "🧠", status: "Unlocked", progress: 65, difficulty: "Advanced", category: "IoT" },
         { id: 2, title: "Molecular Fusion", image: "🧪", status: "In Progress", progress: 42, difficulty: "Intermediate", category: "chemistry" },
         { id: 3, title: "Acid-Base Titration", image: "⚗️", status: "Unlocked", progress: 0, difficulty: "Beginner", category: "chemistry" },
-        { id: 4, title: "Microscope Lab", image: "🔬", status: "Unlocked", progress: 15, difficulty: "Intermediate", category: "IoT" },
+        { id: 4, title: "Exp 2", image: "🔬", status: "Unlocked", progress: 15, difficulty: "Intermediate", category: "IoT" },
         { id: 5, title: "Circuit Builder", image: "🔋", status: "Unlocked", progress: 85, difficulty: "Intermediate", category: "physics" },
         { id: 6, title: "Periodic Table Quest", image: "📔", status: "Unlocked", progress: 10, difficulty: "Beginner", category: "chemistry" }
     ],
@@ -239,7 +239,7 @@ function renderDashboard(container) {
                 <section class="bg-blue-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-blue-100 flex justify-between items-center group cursor-pointer" onclick="startSimulation(1)">
                     <div class="flex gap-6 items-center">
                         <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-3xl group-hover:rotate-6 transition-transform">🧠</div>
-                        <div><h3 class="text-xl font-bold">The Human Mind</h3><p class="text-blue-100 text-xs mt-1">Resume mapping neural pathways.</p></div>
+                        <div><h3 class="text-xl font-bold">Exp 1</h3><p class="text-blue-100 text-xs mt-1">Resume mapping neural pathways.</p></div>
                     </div>
                     <i data-lucide="play" class="fill-current w-6 h-6"></i>
                 </section>
