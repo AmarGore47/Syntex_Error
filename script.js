@@ -52,15 +52,9 @@ function startSimulation(id) {
     const sim = simulations.find(s => s.id === id);
     if (sim.status === 'Locked') return;
 
-    document.getElementById('active-sim-title').innerText = sim.title;
-    document.getElementById('active-sim-emoji').innerText = sim.image;
-    document.getElementById('active-sim-progress-text').innerText = `${sim.progress}% Complete`;
-    document.getElementById('active-sim-progress-bar').style.width = `${sim.progress}%`;
-    
-    document.getElementById('sim-overlay').classList.remove('hidden');
-    lucide.createIcons();
+    // Open secondary HTML file
+    window.location.href = "simulation.html";
 }
-
 function exitSimulation() {
     document.getElementById('sim-overlay').classList.add('hidden');
 }
